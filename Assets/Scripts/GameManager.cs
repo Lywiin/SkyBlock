@@ -8,16 +8,22 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
-    [Header("Prefabs")]
+    [Header("References")]
     public GameObject defaultCubePrefab;
+    public GameObject debugQuad;
 
     [Header("Parameters")]
     public Vector3Int terrainSize;
-    public float3 scale;
+    public float terrainHeight;
+    public float2 scale;
     public Vector2 offset;
     [Range(0f, 1f)] public float threshold;
 
+    [Header("Filters")]
+    public bool roundFilter;
+    public AnimationCurve roundFilterCurve = new AnimationCurve(new Keyframe(0f, 1f) ,new Keyframe(0.5f, 0f), new Keyframe(1f, 0f));
 
+    // Private
     private World world;
     private EntityManager manager;
     private BlobAssetStore blob;
@@ -26,8 +32,18 @@ public class GameManager : MonoBehaviour
 
     private float cubeSpacing;
     private List<float3> cubePositionArray;
+    private float[,] noise2DArray;
 
+    // Cached
+    private float maxDistanceFromCenter;
+
+    // Instance
     public static GameManager Instance;
+
+
+
+
+    /************************ MONOBEHAVIOUR ************************/
 
     private void Awake()
     {
@@ -37,6 +53,7 @@ public class GameManager : MonoBehaviour
     
     private void Start()
     {
+        // DOTS
         world = World.DefaultGameObjectInjectionWorld;
         manager = world.EntityManager;
         blob = new BlobAssetStore();
@@ -45,6 +62,9 @@ public class GameManager : MonoBehaviour
 
         cubeSpacing = defaultCubePrefab.GetComponent<Renderer>().bounds.size.x;
         cubePositionArray = new List<float3>();
+        noise2DArray = new float[terrainSize.x, terrainSize.z];
+
+        maxDistanceFromCenter = Distance(0f, 0f, terrainSize.x / 2f, terrainSize.z / 2f);
 
         GenerateTerrain();
     }
@@ -53,9 +73,19 @@ public class GameManager : MonoBehaviour
         if (blob != null) blob.Dispose();
     }
 
-    public void RefreshTerrain()
+
+    /************************ TERRAIN ************************/
+
+    public void RefreshTerrain(bool random)
     {
         DestroyTerrain();
+        
+        if (random)
+        {
+            offset.x = UnityEngine.Random.Range(-1000000, 1000000);
+            offset.y = UnityEngine.Random.Range(-1000000, 1000000);
+        }
+
         GenerateTerrain();
     }
 
@@ -66,10 +96,11 @@ public class GameManager : MonoBehaviour
 
     private void GenerateTerrain() 
     {
+        Generate2DNoise(new int2(terrainSize.x, terrainSize.z));
+        FillCubePositionArray();
+
         float3 newPos = float3.zero;
         float3 rootPos = (float3)transform.position;
-
-        FillPerlinResultArray();
         int cubeCount = cubePositionArray.Count;
 
         NativeArray<Entity> cubesArray = new NativeArray<Entity>(cubeCount, Allocator.TempJob);
@@ -83,19 +114,51 @@ public class GameManager : MonoBehaviour
 		cubesArray.Dispose();
     }
 
-    private void FillPerlinResultArray()
+    /************************ PERLIN ************************/
+
+    private void Generate2DNoise(int2 size)
+    {
+        Texture2D noiseTexture = new Texture2D(size.x, size.y); // Debug
+
+        for (int x = 0; x < size.x ; x++)
+		{
+            for (int y = 0; y < size.y ; y++)
+            {
+                float noiseValue = GetPerlinValue2D(x, y);
+                if (roundFilter) noiseValue = ApplyRound2DNoiseFilter(size, x, y, noiseValue);
+                noise2DArray[x, y] = noiseValue;
+
+                noiseTexture.SetPixel(x, y, new Color(noiseValue, noiseValue, noiseValue)); // Debug
+            }
+        }
+
+        noiseTexture.Apply();
+        debugQuad.GetComponent<Renderer>().material.mainTexture = noiseTexture;// Debug
+    }
+
+    private float ApplyRound2DNoiseFilter(int2 size, int x, int y, float value)
+    {
+        float distanceFromCenter = Distance(x, y, size.x / 2, size.y / 2);
+        // float distanceFromCenterNormalized = Remap(distanceFromCenter, 0f, maxDistanceFromCenter, 0f, 1f);
+        float distanceFromCenterNormalized = distanceFromCenter / maxDistanceFromCenter;
+        float attenuationCoef = roundFilterCurve.Evaluate(distanceFromCenterNormalized);
+        // Debug.Log(x + " " + y + ": " + distanceFromCenterNormalized);
+        return value * attenuationCoef;
+    }
+
+    private void FillCubePositionArray()
     {
         cubePositionArray.Clear();
 
-        for (float x = 0; x < terrainSize.x; x += cubeSpacing)
+        for (int x = 0; x < terrainSize.x; x++)
 		{
-            for (float z = 0; z < terrainSize.z; z += cubeSpacing)
+            for (int z = 0; z < terrainSize.z; z++)
             {
-                float perlinValue = GetPerlinValue2D(x, z);
-                if (perlinValue > threshold)
+                float3 newPos = new float3(x, noise2DArray[x, z], z);
+                if (newPos.y > threshold)
                 {
-                    perlinValue = Remap01(perlinValue, threshold, 1f);
-                    cubePositionArray.Add(new float3(x, perlinValue * scale.y, z));
+                    newPos.y = (int)(Remap01(newPos.y, threshold, 1f) * terrainHeight);
+                    cubePositionArray.Add(newPos * cubeSpacing);
                 }
             }
 		}
@@ -104,7 +167,7 @@ public class GameManager : MonoBehaviour
     public float GetPerlinValue2D(float x, float y)
     {
         float xCoord = x / terrainSize.x * scale.x + offset.x;
-        float yCoord = y / terrainSize.z * scale.z + offset.y;
+        float yCoord = y / terrainSize.z * scale.y + offset.y;
 
         return Mathf.PerlinNoise(xCoord, yCoord);
     }
@@ -112,5 +175,15 @@ public class GameManager : MonoBehaviour
     public float Remap01(float value, float from, float to) 
     {
         return (value - from) / (to - from);
+    }
+
+    public float Remap(float value, float from1, float to1, float from2, float to2) 
+    {
+        return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
+    }
+
+    public float Distance(float x1, float y1, float x2, float y2)
+    {
+        return ((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
     }
 }
