@@ -90,7 +90,7 @@ public class TerrainGeneratorSystem : JobComponentSystem
             ecb.SetComponent(index, instance, new Translation
             {
                 // Value = localToWorld.Position + random.NextFloat3Direction() * random.NextFloat() * tgData.maxDistanceFromSpawner
-                Value = tgData.nextSpawnPos
+                Value = localToWorld.Position + tgData.nextSpawnPos
             });
 
             if (tgData.nextSpawnPos.x < tgData.terrainSize.x) 
