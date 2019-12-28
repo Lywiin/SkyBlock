@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 2079456649956837194}
   - component: {fileID: 2079456649956837195}
   - component: {fileID: 2079456649956837192}
-  - component: {fileID: 6906004223504549401}
+  - component: {fileID: 1787779248051605937}
   m_Layer: 0
   m_Name: DefaultBlock
   m_TagString: Untagged
@@ -80,7 +80,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!114 &6906004223504549401
+--- !u!114 &1787779248051605937
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

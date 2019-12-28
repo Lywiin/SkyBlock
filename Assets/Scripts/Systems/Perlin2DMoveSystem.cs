@@ -18,25 +18,31 @@ public class Perlin2DMoveSystem : JobComponentSystem
     private struct Move2DJob : IJobForEachWithEntity<Translation>
     {
         public EntityCommandBuffer.Concurrent entityCommandBuffer;
-        // public GameManager gameManager;
         public float3 scale;
         public float2 offset;
         public float2 terrainSize;
 
         public void Execute(Entity entity, int index, ref Translation pos)
         {
-            // pos.Value.y = gameManager.GetPerlinValue2D(pos.Value.x, pos.Value.z);
-            float posY = GetPerlinValue2D(pos.Value.x, pos.Value.z) * scale.y;
+            float noiseValue = GetPerlinValue2D(pos.Value.x, pos.Value.z);
+            // if (noiseValue < 0.5f)
+            // {
+            //     // pos.Value.y = 1500f;
+            //     entityCommandBuffer.DestroyEntity(index, entity);
 
-            entityCommandBuffer.SetComponent(index, entity, new Translation
-            {
-                Value = new float3(pos.Value.x, posY, pos.Value.z)
-            });
+            // }
+            // else
+                pos.Value.y = (int)(noiseValue * scale.y);
+            // float posY = GetPerlinValue2D(pos.Value.x, pos.Value.z) * scale.y;
+
+            // entityCommandBuffer.SetComponent(index, entity, new Translation
+            // {
+            //     Value = new float3(pos.Value.x, posY, pos.Value.z)
+            // });
         }
 
         public float GetPerlinValue2D(float x, float y)
         {
-            // return 1f;
             float xCoord = x / terrainSize.x * scale.x + offset.x;
             float yCoord = y / terrainSize.y * scale.z + offset.y;
 
@@ -46,24 +52,21 @@ public class Perlin2DMoveSystem : JobComponentSystem
 
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {
-        GameManager gameManager = GameManager.Instance;
+        // GameManager gameManager = GameManager.Instance;
 
-        Move2DJob move2DJob = new Move2DJob
-        {
-            entityCommandBuffer = endSimulationEntityCommandBufferSystem.CreateCommandBuffer().ToConcurrent(),
-            // gameManager = GameManager.Instance
-            scale = new float3(gameManager.scale, gameManager.scaleY, gameManager.scale),
-            offset = (float2)gameManager.offset,
-            terrainSize = new float2(gameManager.terrainSize.x, gameManager.terrainSize.z)
-        };
+        // Move2DJob move2DJob = new Move2DJob
+        // {
+        //     entityCommandBuffer = endSimulationEntityCommandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+        //     scale = new float3(gameManager.scale, gameManager.scaleY, gameManager.scale),
+        //     offset = (float2)gameManager.offset,
+        //     terrainSize = new float2(gameManager.terrainSize.x, gameManager.terrainSize.z)
+        // };
 
-        JobHandle jobHandle = move2DJob.Schedule(this, inputDeps);
+        // JobHandle jobHandle = move2DJob.Schedule(this, inputDeps);
 
-        endSimulationEntityCommandBufferSystem.AddJobHandleForProducer(jobHandle);
+        // endSimulationEntityCommandBufferSystem.AddJobHandleForProducer(jobHandle);
 
-        return jobHandle;
-        // return inputDeps;
+        // return jobHandle;
+        return inputDeps;
     }
-
-    
 }

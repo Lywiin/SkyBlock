@@ -8,12 +8,15 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
+    [Header("Prefabs")]
     public GameObject defaultCubePrefab;
-    public Vector3Int terrainSize;
 
-    public float scale;
-    public float scaleY;
+    [Header("Parameters")]
+    public Vector3Int terrainSize;
+    public float3 scale;
     public Vector2 offset;
+    [Range(0f, 1f)] public float threshold;
+
 
     private World world;
     private EntityManager manager;
@@ -22,6 +25,7 @@ public class GameManager : MonoBehaviour
     private GameObjectConversionSettings settings;
 
     private float cubeSpacing;
+    private List<float3> cubePositionArray;
 
     public static GameManager Instance;
 
@@ -40,6 +44,7 @@ public class GameManager : MonoBehaviour
 		defaultCubeEntityPrefab = GameObjectConversionUtility.ConvertGameObjectHierarchy(defaultCubePrefab, settings);
 
         cubeSpacing = defaultCubePrefab.GetComponent<Renderer>().bounds.size.x;
+        cubePositionArray = new List<float3>();
 
         GenerateTerrain();
     }
@@ -48,38 +53,64 @@ public class GameManager : MonoBehaviour
         if (blob != null) blob.Dispose();
     }
 
+    public void RefreshTerrain()
+    {
+        DestroyTerrain();
+        GenerateTerrain();
+    }
+
+    private void DestroyTerrain()
+    {
+        manager.DestroyEntity(manager.CreateEntityQuery(typeof(Perlin2DMoveTag))); 
+    }
+
     private void GenerateTerrain() 
     {
-        int totalAmount = terrainSize.x * terrainSize.y * terrainSize.z;
         float3 newPos = float3.zero;
         float3 rootPos = (float3)transform.position;
-        int index = 0;
 
-        NativeArray<Entity> cubes = new NativeArray<Entity>(totalAmount, Allocator.TempJob);
-        manager.Instantiate(defaultCubeEntityPrefab, cubes); 
+        FillPerlinResultArray();
+        int cubeCount = cubePositionArray.Count;
+
+        NativeArray<Entity> cubesArray = new NativeArray<Entity>(cubeCount, Allocator.TempJob);
+        manager.Instantiate(defaultCubeEntityPrefab, cubesArray); 
+
+        for (int i = 0; i < cubeCount; i++)
+        {
+            manager.SetComponentData(cubesArray[i], new Translation { Value = rootPos + cubePositionArray[i] });
+        }
+
+		cubesArray.Dispose();
+    }
+
+    private void FillPerlinResultArray()
+    {
+        cubePositionArray.Clear();
 
         for (float x = 0; x < terrainSize.x; x += cubeSpacing)
 		{
-			for (float y = 0; y < terrainSize.y; y += cubeSpacing)
-			{
-                for (float z = 0; z < terrainSize.z; z += cubeSpacing)
+            for (float z = 0; z < terrainSize.z; z += cubeSpacing)
+            {
+                float perlinValue = GetPerlinValue2D(x, z);
+                if (perlinValue > threshold)
                 {
-                    newPos.x = x; newPos.y = 1f; newPos.z = z;
-
-                    manager.SetComponentData(cubes[index], new Translation { Value = rootPos + newPos });
-
-                    index++;
+                    perlinValue = Remap01(perlinValue, threshold, 1f);
+                    cubePositionArray.Add(new float3(x, perlinValue * scale.y, z));
                 }
-			}
+            }
 		}
-		cubes.Dispose();
     }
 
-    // public float GetPerlinValue2D(float x, float y)
-    // {
-    //     float xCoord = x / terrainSize.x * scale + offset.x;
-    //     float yCoord = y / terrainSize.z * scale + offset.y;
+    public float GetPerlinValue2D(float x, float y)
+    {
+        float xCoord = x / terrainSize.x * scale.x + offset.x;
+        float yCoord = y / terrainSize.z * scale.z + offset.y;
 
-    //     return Mathf.PerlinNoise(xCoord, yCoord);
-    // }
+        return Mathf.PerlinNoise(xCoord, yCoord);
+    }
+
+    public float Remap01(float value, float from, float to) 
+    {
+        return (value - from) / (to - from);
+    }
 }

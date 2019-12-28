@@ -246,9 +246,12 @@ MonoBehaviour:
   defaultCubePrefab: {fileID: 2079456649956837198, guid: d54d3c131893a33419d3d4f46432b4c0,
     type: 3}
   terrainSize: {x: 100, y: 1, z: 100}
-  scale: 5
-  scaleY: 10
+  scale:
+    x: 5
+    y: 10
+    z: 5
   offset: {x: 0, y: 0}
+  threshold: 0.5
 --- !u!4 &558191185
 Transform:
   m_ObjectHideFlags: 0
