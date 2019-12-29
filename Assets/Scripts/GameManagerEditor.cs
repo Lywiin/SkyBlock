@@ -12,15 +12,16 @@ public class GameManagerEditor : Editor
         DrawDefaultInspector();
 
         GUILayout.Space(10);
-        if (GUILayout.Button("Generate Terrain"))
+        if (GUILayout.Button("Generate Terrain") && Application.isPlaying)
         {   
-            if (Application.isPlaying) GameManager.Instance.RefreshTerrain(false);
+            GameManager.Instance.GenerateTerrain();
         }
 
         GUILayout.Space(5);
-        if (GUILayout.Button("Generate Random Terrain"))
+        if (GUILayout.Button("Generate Random Terrain") && Application.isPlaying)
         {   
-            if (Application.isPlaying) GameManager.Instance.RefreshTerrain(true);
+            GameManager.Instance.RefreshSeed();
+            GameManager.Instance.GenerateTerrain();
         }
         
         SceneView.RepaintAll();

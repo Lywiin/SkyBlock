@@ -24,6 +24,9 @@ public class GameManager : MonoBehaviour
     public bool thresholdFilterToggle;
     [Range(0f, 1f)] public float threshold;
 
+    [Header("Generation")]
+    public int seed;
+
     // Private
     private World world;
     private EntityManager manager;
@@ -49,6 +52,8 @@ public class GameManager : MonoBehaviour
     {
         if (GameManager.Instance) Destroy(this);
         GameManager.Instance = this;
+
+        UnityEngine.Random.InitState(seed);
     }
     
     private void Start()
@@ -74,26 +79,24 @@ public class GameManager : MonoBehaviour
 
     /************************ TERRAIN ************************/
 
-    public void RefreshTerrain(bool random)
+    public void RefreshSeed()
     {
-        DestroyTerrain();
-        
-        if (random)
-        {
-            offset.x = UnityEngine.Random.Range(-1000000, 1000000);
-            offset.y = UnityEngine.Random.Range(-1000000, 1000000);
-        }
+        seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+        UnityEngine.Random.InitState(seed);
 
-        GenerateTerrain();
+        offset.x = UnityEngine.Random.Range(-1000000, 1000000);
+        offset.y = UnityEngine.Random.Range(-1000000, 1000000);
     }
 
     private void DestroyTerrain()
     {
-        manager.DestroyEntity(manager.CreateEntityQuery(typeof(Perlin2DMoveTag))); 
+        manager.DestroyEntity(manager.CreateEntityQuery(typeof(CubeTag))); 
     }
 
-    private void GenerateTerrain() 
+    public void GenerateTerrain() 
     {
+        DestroyTerrain();
+
         Generate2DNoise(new int2(terrainSize.x, terrainSize.z));
 
         InstantiateCubes();
@@ -101,7 +104,7 @@ public class GameManager : MonoBehaviour
 
     private void InstantiateCubes()
     {
-        Debug.Log("CUBE COUNT: " + cubeCount);
+        // Debug.Log("CUBE COUNT: " + cubeCount);
 
         float3 newPos = float3.zero;
         float3 rootPos = (float3)transform.position;
