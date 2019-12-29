@@ -64,7 +64,7 @@ public class GameManager : MonoBehaviour
         cubePositionArray = new List<float3>();
         noise2DArray = new float[terrainSize.x, terrainSize.z];
 
-        maxDistanceFromCenter = Distance(0f, 0f, terrainSize.x / 2f, terrainSize.z / 2f);
+        maxDistanceFromCenter = Utils.Distance(0f, 0f, terrainSize.x / 2f, terrainSize.z / 2f);
 
         GenerateTerrain();
     }
@@ -138,7 +138,7 @@ public class GameManager : MonoBehaviour
 
     private float ApplyRound2DNoiseFilter(int2 size, int x, int y, float value)
     {
-        float distanceFromCenter = Distance(x, y, size.x / 2, size.y / 2);
+        float distanceFromCenter = Utils.Distance(x, y, size.x / 2, size.y / 2);
         // float distanceFromCenterNormalized = Remap(distanceFromCenter, 0f, maxDistanceFromCenter, 0f, 1f);
         float distanceFromCenterNormalized = distanceFromCenter / maxDistanceFromCenter;
         float attenuationCoef = roundFilterCurve.Evaluate(distanceFromCenterNormalized);
@@ -157,7 +157,7 @@ public class GameManager : MonoBehaviour
                 float3 newPos = new float3(x, noise2DArray[x, z], z);
                 if (newPos.y > threshold)
                 {
-                    newPos.y = (int)(Remap01(newPos.y, threshold, 1f) * terrainHeight);
+                    newPos.y = (int)(Utils.Remap01(newPos.y, threshold, 1f) * terrainHeight);
                     cubePositionArray.Add(newPos * cubeSpacing);
                 }
             }
@@ -170,20 +170,5 @@ public class GameManager : MonoBehaviour
         float yCoord = y / terrainSize.z * scale.y + offset.y;
 
         return Mathf.PerlinNoise(xCoord, yCoord);
-    }
-
-    public float Remap01(float value, float from, float to) 
-    {
-        return (value - from) / (to - from);
-    }
-
-    public float Remap(float value, float from1, float to1, float from2, float to2) 
-    {
-        return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
-    }
-
-    public float Distance(float x1, float y1, float x2, float y2)
-    {
-        return ((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
     }
 }
