@@ -340,14 +340,16 @@ MonoBehaviour:
   defaultCubePrefab: {fileID: 2079456649956837198, guid: d54d3c131893a33419d3d4f46432b4c0,
     type: 3}
   debugQuad: {fileID: 174261084}
-  terrainSize: {x: 100, y: 1, z: 100}
+  terrainSize:
+    x: 100
+    y: 1
+    z: 100
   terrainHeight: 20
   scale:
     x: 5
     y: 5
   offset: {x: 0, y: 0}
-  threshold: 0
-  roundFilter: 0
+  roundFilter: 1
   roundFilterCurve:
     serializedVersion: 2
     m_Curve:
@@ -381,6 +383,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  thresholdFilterToggle: 1
+  threshold: 0.2
 --- !u!4 &558191185
 Transform:
   m_ObjectHideFlags: 0
