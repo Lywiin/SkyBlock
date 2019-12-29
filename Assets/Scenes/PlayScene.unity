@@ -337,7 +337,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae715a5ef2ed7854ca169ff135b297fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  defaultCubePrefab: {fileID: 2079456649956837198, guid: d54d3c131893a33419d3d4f46432b4c0,
+  defaultCubePrefab: {fileID: 5017715055655539760, guid: 62225af2f4bb24e4bb4bfae5d01d873c,
     type: 3}
   debugQuad: {fileID: 174261084}
   terrainSize:
@@ -477,13 +477,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1350654097}
-  m_LocalRotation: {x: 0.190156, y: 0.2688471, z: -0.05423217, w: 0.9426669}
-  m_LocalPosition: {x: 3.72, y: 10, z: -10}
+  m_LocalRotation: {x: 0.17897461, y: 0.30430785, z: -0.0583251, w: 0.9337896}
+  m_LocalPosition: {x: 3, y: 13.88, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 22.809002, y: 31.836002, z: 0}
+  m_LocalEulerAnglesHint: {x: 21.7, y: 36.1, z: 0}
 --- !u!114 &1350654101
 MonoBehaviour:
   m_ObjectHideFlags: 0
