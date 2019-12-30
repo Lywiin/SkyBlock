@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
@@ -14,6 +14,7 @@ public class GameManagerEditor : Editor
         GUILayout.Space(10);
         if (GUILayout.Button("Generate Terrain") && Application.isPlaying)
         {   
+            GameManager.Instance.InitSeed();
             GameManager.Instance.GenerateTerrain();
         }
 
@@ -21,6 +22,7 @@ public class GameManagerEditor : Editor
         if (GUILayout.Button("Generate Random Terrain") && Application.isPlaying)
         {   
             GameManager.Instance.RefreshSeed();
+            GameManager.Instance.InitSeed();
             GameManager.Instance.GenerateTerrain();
         }
         
