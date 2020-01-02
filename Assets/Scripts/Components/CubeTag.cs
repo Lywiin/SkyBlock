@@ -1,5 +1,6 @@
-﻿using Unity.Entities;
-using Unity.Mathematics;
+﻿using System;
+using UnityEngine;
+using Unity.Entities;
 
-[GenerateAuthoringComponent]
-public class CubeTag : IComponentData { }
+[Serializable]
+public class CubeTag : IComponentData  { }

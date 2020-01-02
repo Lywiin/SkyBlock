@@ -1,23 +1,27 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Transforms;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 public class GameManager : MonoBehaviour
 {
+    [Header("UI")]
+    public UnityEngine.UI.Text text;
+    public UnityEngine.UI.RawImage noiseImage;
+
     [Header("References")]
     public GameObject[] cubePrefabArray;
-    // public GameObject defaultCubePrefab;
-    public GameObject debugQuad;
 
     [Header("Parameters")]
     public int3 terrainSize;
     public float terrainHeight;
     public float2 scale;
-    public Vector2 offset;
+    [HideInInspector] public Vector2 offset;
 
     [Header("Filters")]
     public bool roundFilter;
@@ -32,38 +36,20 @@ public class GameManager : MonoBehaviour
     private World world;
     private EntityManager manager;
     private BlobAssetStore blob;
-    // private Entity defaultCubeEntityPrefab;
     private Entity[] cubePrefabEntityArray;
     private GameObjectConversionSettings settings;
 
-    // private float[,] noise2DArray;
-    private CubePosition[,] cubePositionArray;
-    // private int cubeCount;
+    private float[,] noise2DArray;
+    private int[,] finalPrefabIndex2DArray;
+    private List<int2> tempAvailablePositionList;
+    private List<int2> nextTempAvailablePositionList;
     private int[] cubeCount;
 
-    // Cached
     private float maxDistanceFromCenter;
-    private List<int2>[] spawnPositionListArray;
 
     // Instance
     public static GameManager Instance;
 
-
-    public struct CubePosition
-    {
-        public bool exist;
-        public bool available;
-        public float3 pos;
-        public int cubePrefabIndex;
-
-        public CubePosition(bool exist, bool available, float3 pos, int cubePrefabIndex)
-        {
-            this.exist = exist;
-            this.available = available;
-            this.pos = pos;
-            this.cubePrefabIndex = cubePrefabIndex;
-        }
-    }
 
     /************************ MONOBEHAVIOUR ************************/
 
@@ -83,22 +69,17 @@ public class GameManager : MonoBehaviour
         blob = new BlobAssetStore();
         settings = GameObjectConversionSettings.FromWorld(world, blob);
 
-        // cubePrefabEntityArray = new Entity[cubePrefabArray.Length];
-        // for (int i = 0; i < cubePrefabEntityArray.Length; i++)
-        //     cubePrefabEntityArray[i] = GameObjectConversionUtility.ConvertGameObjectHierarchy(cubePrefabArray[i], settings);
-		// // defaultCubeEntityPrefab = GameObjectConversionUtility.ConvertGameObjectHierarchy(defaultCubePrefab, settings);
+        tempAvailablePositionList = new List<int2>();
+        nextTempAvailablePositionList = new List<int2>();
+    }
 
-        // // noise2DArray = new float[terrainSize.x, terrainSize.z];
-        // cubePositionArray = new CubePosition[terrainSize.x, terrainSize.z];
-        // cubeCount = new int[cubePrefabArray.Length];
-
-        // maxDistanceFromCenter = Utils.Distance(0f, 0f, terrainSize.x / 2f, terrainSize.z / 2f);
-        // // availableSpawnPositionList = new List<int2>();
-        // spawnPositionListArray = new List<int2>[cubePrefabArray.Length];
-        // for (int i = 0; i < spawnPositionListArray.Length; i++)
-        //     spawnPositionListArray[i] = new List<int2>();
-
-        // GenerateTerrain();
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            GameManager.Instance.InitSeed();
+            GameManager.Instance.GenerateTerrain();
+        }
     }
 
     private void OnDestroy() {
@@ -107,6 +88,21 @@ public class GameManager : MonoBehaviour
 
 
     /************************ TERRAIN ************************/
+
+    // Allocation of all variable changeable at each generation
+    private void Initialize()
+    {
+        cubePrefabEntityArray = new Entity[cubePrefabArray.Length];
+        for (int i = 0; i < cubePrefabEntityArray.Length; i++)
+            cubePrefabEntityArray[i] = GameObjectConversionUtility.ConvertGameObjectHierarchy(cubePrefabArray[i], settings);
+
+        noise2DArray = new float[terrainSize.x, terrainSize.z];
+        finalPrefabIndex2DArray = new int[terrainSize.x, terrainSize.z];
+
+        cubeCount = new int[cubePrefabArray.Length];
+
+        maxDistanceFromCenter = Utils.Distance(0f, 0f, terrainSize.x / 2f, terrainSize.z / 2f);
+    }
 
     public void RefreshSeed()
     {
@@ -123,7 +119,10 @@ public class GameManager : MonoBehaviour
 
     private void DestroyTerrain()
     {
-        manager.DestroyEntity(manager.CreateEntityQuery(typeof(CubeTag))); 
+        manager.DestroyEntity(manager.CreateEntityQuery(typeof(Translation))); 
+
+        tempAvailablePositionList.Clear();
+        nextTempAvailablePositionList.Clear();
         
         for (int i = 0; i < cubeCount.Length; i++)
             cubeCount[i] = 0;
@@ -131,35 +130,58 @@ public class GameManager : MonoBehaviour
 
     public void GenerateTerrain() 
     {
-        cubePrefabEntityArray = new Entity[cubePrefabArray.Length];
-        for (int i = 0; i < cubePrefabEntityArray.Length; i++)
-            cubePrefabEntityArray[i] = GameObjectConversionUtility.ConvertGameObjectHierarchy(cubePrefabArray[i], settings);
-
-        spawnPositionListArray = new List<int2>[cubePrefabArray.Length];
-        for (int i = 0; i < spawnPositionListArray.Length; i++)
-            spawnPositionListArray[i] = new List<int2>();
-
-        cubePositionArray = new CubePosition[terrainSize.x, terrainSize.z];
-        cubeCount = new int[cubePrefabArray.Length];
-
-        maxDistanceFromCenter = Utils.Distance(0f, 0f, terrainSize.x / 2f, terrainSize.z / 2f);
+        Initialize();
+        DestroyTerrain();
 
         int2 terrainSize2D = new int2(terrainSize.x, terrainSize.z);
 
-        DestroyTerrain();
+        Debug.Log("<color=yellow> =============================== </color>");
+        float timeStart1 = Time.realtimeSinceStartup;
         Generate2DNoise(terrainSize2D);
+        float timeEnd1 = Time.realtimeSinceStartup;
+        Debug.Log("<color=yellow> TIME ELAPSED (Generate2DNoise): " + (timeEnd1 - timeStart1).ToString("F2") + "s</color>");
+
+        float timeStart2 = Time.realtimeSinceStartup;
         ScaleCubes(terrainSize2D);
+        float timeEnd2 = Time.realtimeSinceStartup;
+        Debug.Log("<color=yellow> TIME ELAPSED (ScaleCubes): " + (timeEnd2 - timeStart2).ToString("F2") + "s</color>");
+
+        float timeStart3 = Time.realtimeSinceStartup;
         InstantiateCubes();
+        float timeEnd3 = Time.realtimeSinceStartup;
+        Debug.Log("<color=yellow> TIME ELAPSED (InstantiateCubes): " + (timeEnd3 - timeStart3).ToString("F2") + "s</color>");
+
+
+        float totalTime = ((timeEnd1 - timeStart1) + (timeEnd2 - timeStart2) + (timeEnd3 - timeStart3));
+        Debug.Log("<color=yellow> TIME ELAPSED: " + totalTime.ToString("F2") + "s</color>");
+        text.text = totalTime.ToString();
+
+        int totalCount = 0;
+        for (int i = 0; i < cubeCount.Length; i++)
+        {
+            Debug.Log("Cube count " + cubePrefabArray[i].gameObject.name.ToString() + ": " + cubeCount[i]);
+            totalCount += cubeCount[i];
+        }
+        Debug.Log("<color=yellow> TOTAL CUBE COUNT: " + totalCount + "</color>");
+
+        Debug.Log("<color=yellow> =============================== </color>");
     }
 
     private void InstantiateCubes()
     {
-        // for (int i = 0; i < cubeCount.Length; i++)
-        //     Debug.Log("CUBE COUNT " + i + ": " + cubeCount[i]);
+        // string s = "";
+        // for (int x = 0; x < terrainSize.x ; x++)
+        // {
+        //     for (int z = 0; z < terrainSize.z ; z++)
+        //     {
+        //         s += finalPrefabIndex2DArray[x, z] + ", ";
+        //     }
+        //     s += "\n";
+        // }
+        // Debug.Log(s);
 
         float3 newPos = float3.zero;
         float3 rootPos = (float3)transform.position;
-        // int index = 0;
         int[] indexes = new int[cubePrefabArray.Length];
 
         NativeArray<Entity>[] cubeEntitiesArrayArray = new NativeArray<Entity>[cubeCount.Length];
@@ -170,31 +192,21 @@ public class GameManager : MonoBehaviour
             manager.Instantiate(cubePrefabEntityArray[i], cubeEntitiesArrayArray[i]);
         }
 
-        // NativeArray<Entity> cubesArray = new NativeArray<Entity>(cubeCount, Allocator.TempJob);
-        // manager.Instantiate(defaultCubeEntityPrefab, cubesArray); 
-
         for (int x = 0; x < terrainSize.x ; x++)
 		{
             for (int z = 0; z < terrainSize.z ; z++)
             {
-                // if (noise2DArray[x, z] == 0f) continue; // Don't spawn cube if value is 0
-                if (!cubePositionArray[x, z].exist) continue;
+                if (finalPrefabIndex2DArray[x, z] == -1) continue;
+                int cubePrefabIndex = finalPrefabIndex2DArray[x, z];
 
-                // // Set new position
-                // newPos.x = x;
-                // newPos.y = (int)(Utils.Remap01(noise2DArray[x, z], threshold, 1f) * terrainHeight);
-                // newPos.z = z;
-                // newPos += rootPos;
-
-                // manager.SetComponentData(cubesArray[index], new Translation { Value = cubePositionArray[x, z].pos + rootPos });
-
-                int cubePrefabIndex = cubePositionArray[x, z].cubePrefabIndex;
                 Entity entity = cubeEntitiesArrayArray[cubePrefabIndex][indexes[cubePrefabIndex]];
-                manager.SetComponentData(entity, new Translation { Value = cubePositionArray[x, z].pos + rootPos });
+                newPos = new float3(x, 1f, z);
+
+                manager.SetComponentData(entity, new Translation { Value = newPos + rootPos });
                 indexes[cubePrefabIndex]++;
             }
         }
-        // cubesArray.Dispose();
+
         for (int i = 0; i < cubeEntitiesArrayArray.Length; i++)
         {
             cubeEntitiesArrayArray[i].Dispose();
@@ -206,7 +218,6 @@ public class GameManager : MonoBehaviour
     private void Generate2DNoise(int2 size)
     {
         Texture2D noiseTexture = new Texture2D(size.x, size.y); // Debug
-        // cubeCount = 0;
 
         for (int x = 0; x < size.x ; x++)
 		{
@@ -217,8 +228,10 @@ public class GameManager : MonoBehaviour
                 if (roundFilter) noiseValue = ApplyRound2DNoiseFilter(size, x, y, noiseValue);
                 if (thresholdFilterToggle) noiseValue = ApplyThresholdFilter(noiseValue); 
 
-                // noise2DArray[x, y] = noiseValue;
-                AddCubePosition(x, y, noiseValue);
+                noise2DArray[x, y] = noiseValue;
+                if (noiseValue != 0) tempAvailablePositionList.Add(new int2(x, y));
+
+                finalPrefabIndex2DArray[x, y] = -1; // Use the double for loop to initialize array
 
                 noiseTexture.SetPixel(x, y, new Color(noiseValue, noiseValue, noiseValue)); // Debug
                 // if (noiseValue != 0f) cubeCount++;
@@ -226,7 +239,7 @@ public class GameManager : MonoBehaviour
         }
 
         noiseTexture.Apply();
-        debugQuad.GetComponent<Renderer>().material.mainTexture = noiseTexture;// Debug
+        noiseImage.texture = noiseTexture; // Debug
     }
 
     public float GetPerlinValue2D(float x, float y)
@@ -255,124 +268,64 @@ public class GameManager : MonoBehaviour
     private void ScaleCubes(int2 size)
     {
         int currentCubePrefabIndex = cubePrefabArray.Length - 1;
-
-        FillAvailableSpawnPositionList(size, currentCubePrefabIndex);
         
         while (currentCubePrefabIndex > 0)
         {
-            FillAvailableSpawnPositionList(size, currentCubePrefabIndex - 1);
+            nextTempAvailablePositionList = new List<int2>(tempAvailablePositionList);
             
-            while (spawnPositionListArray[currentCubePrefabIndex].Count > 0)
+            while (tempAvailablePositionList.Count > 0)
             {
-                int randomIndex = UnityEngine.Random.Range(0, spawnPositionListArray[currentCubePrefabIndex].Count);
-                int2 pickedSpawnPosition = spawnPositionListArray[currentCubePrefabIndex][randomIndex];
+                int randomIndex = UnityEngine.Random.Range(0, tempAvailablePositionList.Count);
+                int2 pickedSpawnPosition = tempAvailablePositionList[randomIndex];
 
-                SetCubePositionPrefabIndex(ref cubePositionArray[pickedSpawnPosition.x, pickedSpawnPosition.y], currentCubePrefabIndex);
-                RemoveSurroundingCubePosition(pickedSpawnPosition.x, pickedSpawnPosition.y, currentCubePrefabIndex); // Remove 3x3 square for index == 1
+                cubeCount[currentCubePrefabIndex]++;
+
+                finalPrefabIndex2DArray[pickedSpawnPosition.x, pickedSpawnPosition.y] = currentCubePrefabIndex;
+                RemoveSurroundingCubePosition(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
             }
 
+            tempAvailablePositionList = nextTempAvailablePositionList;
             currentCubePrefabIndex--;
         }
 
-        cubeCount[0] = spawnPositionListArray[0].Count;
-
-        for (int i = 0; i < cubeCount.Length; i++)
-            Debug.Log("CUBE COUNT " + i + ": " + cubeCount[i]);
-    }
-
-    // private void ScaleCubes(int2 size)
-    // {
-    //     int currentCubePrefabIndex = cubePrefabArray.Length - 1;
-
-    //     while (currentCubePrefabIndex > 0)
-    //     {
-    //         FillAvailableSpawnPositionList(size);
-
-    //         while (availableSpawnPositionList.Count > 0)
-    //         {
-    //             if (availableSpawnPositionList.Count % 100 == 0) Debug.Log("AVAILABLE SPAWN POSITION LEFT: " + availableSpawnPositionList);
-    //             int2 pickedSpawnPosition = availableSpawnPositionList[UnityEngine.Random.Range(0, availableSpawnPositionList.Count)];
-
-    //             SetCubePositionPrefabIndex(ref cubePositionArray[pickedSpawnPosition.x, pickedSpawnPosition.y], currentCubePrefabIndex);
-    //             RemoveSurroundingCubePosition(pickedSpawnPosition.x, pickedSpawnPosition.y, currentCubePrefabIndex); // Remove 3x3 square for index == 1
-    //         }
-
-    //         currentCubePrefabIndex--;
-    //     }
-
-    //     FillAvailableSpawnPositionList(size);
-    //     cubeCount[0] = availableSpawnPositionList.Count;
-
-    //     for (int i = 0; i < cubeCount.Length; i++)
-    //         Debug.Log("CUBE COUNT " + i + ": " + cubeCount[i]);
-    // }
-
-    private void FillAvailableSpawnPositionList(int2 size, int index)
-    {
-        spawnPositionListArray[index].Clear();
-
-        if (index == spawnPositionListArray.Length - 1)
+        cubeCount[0] = tempAvailablePositionList.Count;
+        for (int i = 0; i < tempAvailablePositionList.Count; i++)
         {
-            for (int x = 0; x < size.x ; x++)
-                for (int y = 0; y < size.y ; y++)
-                {
-                    if (cubePositionArray[x, y].available) spawnPositionListArray[index].Add(new int2(x, y));
-                }
-        } 
-        else
-        {
-            for (int i = 0; i < spawnPositionListArray[index + 1].Count ; i++)
-                spawnPositionListArray[index].Add(spawnPositionListArray[index + 1][i]);
-        }
-
-    }
-
-    private void AddCubePosition(int x, int y, float noiseValue)
-    {
-        if (noiseValue != 0f)
-        {
-            float3 pos = new float3(x, (int)(Utils.Remap01(noiseValue, threshold, 1f) * terrainHeight), y);
-            cubePositionArray[x, y] = new CubePosition(true, true, pos, 0);
-            // cubeCount++;
-            // cubeCount[0]++; // DEBUG PURPOSE
-        } else
-        {
-            cubePositionArray[x, y] = new CubePosition(false, false, 0f, 0);
+            int2 spawnPos = tempAvailablePositionList[i];
+            finalPrefabIndex2DArray[spawnPos.x, spawnPos.y] = currentCubePrefabIndex; // 0
         }
     }
 
-    private void ResetCubePosition(int x, int y)
+    private void RemoveSurroundingCubePosition([ReadOnly] ref int2 pickedPos, [ReadOnly] ref int radius)
     {
-        cubePositionArray[x, y].exist = false;
-        cubePositionArray[x, y].available = false;
-        cubePositionArray[x, y].pos = 0f;
-        cubePositionArray[x, y].cubePrefabIndex = 0;
-    }
+        int radiusD = radius * 2;
+        int xMinD = pickedPos.x - radiusD;
+        int xMaxD = pickedPos.x + radiusD;
+        int yMinD = pickedPos.y - radiusD;
+        int yMaxD = pickedPos.y + radiusD;
 
-    private void RemoveSurroundingCubePosition(int centerX, int centerY, int radius)
-    {
-        int doubleRadius = radius * 2;
-        for (int x = centerX - doubleRadius; x <= centerX + doubleRadius ; x++)
-            for (int y = centerY - doubleRadius; y <= centerY + doubleRadius ; y++)
+        int xMinH = xMinD + radius;
+        int xMaxH = xMaxD - radius;
+        int yMinH = yMinD + radius;
+        int yMaxH = yMaxD - radius;
+
+        int count1 = 0;
+        int count2 = 0;
+
+        for (int x = xMinD; x <= xMaxD ; x++)
+            for (int y = yMinD; y <= yMaxD ; y++)
             {
+                count1++;
+                if (x >= xMinH && x <= xMaxH && y >= yMinH && y <= yMaxH) count2++;
+
                 if (x < 0 || y < 0 || x >= terrainSize.x || y >= terrainSize.z) continue;
 
-                spawnPositionListArray[radius].Remove(new int2(x, y));
+                tempAvailablePositionList.Remove(new int2(x, y));
 
-                if (x >= centerX - radius && x <= centerX + radius && y >= centerY - radius && y <= centerY + radius)
+                if (x >= xMinH && x <= xMaxH && y >= yMinH && y <= yMaxH)
                 {
-                    spawnPositionListArray[radius - 1].Remove(new int2(x, y));
-                    if (x != centerX || y != centerY) ResetCubePosition(x, y);
+                    nextTempAvailablePositionList.Remove(new int2(x, y));
                 }
             }
-    }
-
-    private void SetCubePositionPrefabIndex(ref CubePosition cubePosition, int currentCubePrefabIndex)
-    {
-        cubePosition.exist = true;
-        cubePosition.available = false;
-        cubePosition.cubePrefabIndex = currentCubePrefabIndex;
-
-        cubeCount[currentCubePrefabIndex]++;
     }
 }
