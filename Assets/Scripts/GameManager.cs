@@ -276,9 +276,15 @@ public class GameManager : MonoBehaviour
                 int cubePrefabIndex = finalPrefabIndex2DArray[x, z];
 
                 Entity entity = cubeEntitiesArrayArray[cubePrefabIndex][indexes[cubePrefabIndex]];
-                newPos = new float3(x, 1f, z);
+                newPos = new float3(x, (int)(noise2DArray[x, z] * terrainHeight), z) + rootPos;
 
-                manager.SetComponentData(entity, new Translation { Value = newPos + rootPos });
+                // manager.SetComponentData(entity, new Translation { Value = newPos + rootPos });
+                manager.SetComponentData(entity, new WaveMoveData 
+                { 
+                    originPosition = newPos,
+                    waveHeight = 2f,
+                    waveSpeed = 0.5f, 
+                });
                 indexes[cubePrefabIndex]++;
             }
         }
