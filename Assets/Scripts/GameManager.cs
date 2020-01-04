@@ -19,8 +19,9 @@ public class GameManager : MonoBehaviour
     [Header("Parameters")]
     public int3 terrainSize;
     public float terrainHeight;
-    public float2 scale;
-    [HideInInspector] public float2 offset;
+    public float2 noiseScale;
+    public float waveHeight;
+    public float waveSpeed;
 
     [Header("Filters")]
     public bool roundFilter;
@@ -39,13 +40,17 @@ public class GameManager : MonoBehaviour
     private Entity[] cubePrefabEntityArray;
     private GameObjectConversionSettings settings;
 
+    // Perlin
+    private float2 offset;
+    private float maxDistanceFromCenter;
+    
+    // Instantiate cubes
     private float[,] noise2DArray;
     private int[,] finalPrefabIndex2DArray;
     private HashSet<int2> tempAvailablePositionHashSet;
     private HashSet<int2> nextTempAvailablePositionHashSet;
     private int[] cubeCount;
 
-    private float maxDistanceFromCenter;
 
     // Instance
     public static GameManager Instance;
@@ -209,8 +214,8 @@ public class GameManager : MonoBehaviour
                 manager.SetComponentData(entity, new WaveMoveData 
                 { 
                     originPosition = newPos,
-                    waveHeight = 2f,
-                    waveSpeed = 0.5f, 
+                    waveHeight = waveHeight,
+                    waveSpeed = waveSpeed, 
                 });
                 indexes[cubePrefabIndex]++;
             }
@@ -252,8 +257,8 @@ public class GameManager : MonoBehaviour
 
     public float GetPerlinValue2D(float x, float y)
     {
-        float xCoord = x / terrainSize.x * scale.x + offset.x;
-        float yCoord = y / terrainSize.z * scale.y + offset.y;
+        float xCoord = x / terrainSize.x * noiseScale.x + offset.x;
+        float yCoord = y / terrainSize.z * noiseScale.y + offset.y;
 
         return Mathf.PerlinNoise(xCoord, yCoord);
     }

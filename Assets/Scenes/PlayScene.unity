@@ -282,17 +282,16 @@ MonoBehaviour:
   - {fileID: 3522466454960303378, guid: 913ca1bb2397cb2478d2cbd1602b7a54, type: 3}
   - {fileID: 7803720748287341991, guid: 29e897f45e28b2e43ad6b60c2b15c928, type: 3}
   terrainSize:
-    x: 300
+    x: 500
     y: 1
-    z: 300
-  terrainHeight: 1
-  scale:
+    z: 500
+  terrainHeight: 60
+  noiseScale:
     x: 5
     y: 5
-  offset:
-    x: 0
-    y: 0
-  roundFilter: 0
+  waveHeight: 10
+  waveSpeed: 1
+  roundFilter: 1
   roundFilterCurve:
     serializedVersion: 2
     m_Curve:
@@ -326,7 +325,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  thresholdFilterToggle: 0
+  thresholdFilterToggle: 1
   threshold: 0.2
   seed: 1
   rng:
