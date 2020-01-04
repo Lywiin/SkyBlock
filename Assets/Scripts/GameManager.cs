@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Collections;
@@ -41,8 +41,8 @@ public class GameManager : MonoBehaviour
 
     private float[,] noise2DArray;
     private int[,] finalPrefabIndex2DArray;
-    private List<int2> tempAvailablePositionList;
-    private List<int2> nextTempAvailablePositionList;
+    private HashSet<int2> tempAvailablePositionHashSet;
+    private HashSet<int2> nextTempAvailablePositionHashSet;
     private int[] cubeCount;
 
     private float maxDistanceFromCenter;
@@ -69,8 +69,8 @@ public class GameManager : MonoBehaviour
         blob = new BlobAssetStore();
         settings = GameObjectConversionSettings.FromWorld(world, blob);
 
-        tempAvailablePositionList = new List<int2>();
-        nextTempAvailablePositionList = new List<int2>();
+        tempAvailablePositionHashSet = new HashSet<int2>();
+        nextTempAvailablePositionHashSet = new HashSet<int2>();
     }
 
     private void Update()
@@ -121,8 +121,8 @@ public class GameManager : MonoBehaviour
     {
         manager.DestroyEntity(manager.CreateEntityQuery(typeof(Translation))); 
 
-        tempAvailablePositionList.Clear();
-        nextTempAvailablePositionList.Clear();
+        tempAvailablePositionHashSet.Clear();
+        nextTempAvailablePositionHashSet.Clear();
         
         for (int i = 0; i < cubeCount.Length; i++)
             cubeCount[i] = 0;
@@ -135,36 +135,32 @@ public class GameManager : MonoBehaviour
 
         int2 terrainSize2D = new int2(terrainSize.x, terrainSize.z);
 
-        Debug.Log("<color=yellow> =============================== </color>");
-        float timeStart1 = Time.realtimeSinceStartup;
+        // Debug.Log("<color=yellow> =============================== </color>");
+        Utils.StartTimer();
         Generate2DNoise(terrainSize2D);
-        float timeEnd1 = Time.realtimeSinceStartup;
-        Debug.Log("<color=yellow> TIME ELAPSED (Generate2DNoise): " + (timeEnd1 - timeStart1).ToString("F2") + "s</color>");
+        float time1 = Utils.EndTimer("Generate2DNoise");
 
-        float timeStart2 = Time.realtimeSinceStartup;
+        Utils.StartTimer();
         ScaleCubes(terrainSize2D);
-        float timeEnd2 = Time.realtimeSinceStartup;
-        Debug.Log("<color=yellow> TIME ELAPSED (ScaleCubes): " + (timeEnd2 - timeStart2).ToString("F2") + "s</color>");
+        float time2 = Utils.EndTimer("ScaleCubes");
 
-        float timeStart3 = Time.realtimeSinceStartup;
+        Utils.StartTimer();
         InstantiateCubes();
-        float timeEnd3 = Time.realtimeSinceStartup;
-        Debug.Log("<color=yellow> TIME ELAPSED (InstantiateCubes): " + (timeEnd3 - timeStart3).ToString("F2") + "s</color>");
+        float time3 = Utils.EndTimer("InstantiateCubes");
 
 
-        float totalTime = ((timeEnd1 - timeStart1) + (timeEnd2 - timeStart2) + (timeEnd3 - timeStart3));
-        Debug.Log("<color=yellow> TIME ELAPSED: " + totalTime.ToString("F2") + "s</color>");
+        float totalTime = time1 + time2 + time3;
+        Debug.Log("<color=yellow> TIME ELAPSED TOTAL: " + totalTime.ToString("F2") + "s</color>");
         text.text = totalTime.ToString();
 
         int totalCount = 0;
         for (int i = 0; i < cubeCount.Length; i++)
         {
-            // Debug.Log("Cube count " + cubePrefabArray[i].gameObject.name.ToString() + ": " + cubeCount[i]);
             totalCount += cubeCount[i];
         }
         Debug.Log("<color=yellow> TOTAL CUBE COUNT: " + totalCount + "</color>");
 
-        Debug.Log("<color=yellow> =============================== </color>");
+        Debug.Log("<color=orange> =============================== </color>");
     }
 
     private void InstantiateCubes()
@@ -234,7 +230,7 @@ public class GameManager : MonoBehaviour
                 if (thresholdFilterToggle) noiseValue = ApplyThresholdFilter(noiseValue); 
 
                 noise2DArray[x, y] = noiseValue;
-                if (noiseValue != 0) tempAvailablePositionList.Add(new int2(x, y));
+                if (noiseValue != 0) tempAvailablePositionHashSet.Add(new int2(x, y));
 
                 finalPrefabIndex2DArray[x, y] = -1; // Use the double for loop to initialize array
 
@@ -272,15 +268,21 @@ public class GameManager : MonoBehaviour
     private void ScaleCubes(int2 size)
     {
         int currentCubePrefabIndex = cubePrefabArray.Length - 1;
-        
+
         while (currentCubePrefabIndex > 0)
         {
-            nextTempAvailablePositionList = new List<int2>(tempAvailablePositionList);
+            // Shuffle tempAvailablePositionList
+            // Utils.StartTimer();
+            List<int2> tempListToShuffle = tempAvailablePositionHashSet.ToList();
+            tempAvailablePositionHashSet = Utils.ShuffleListToHashSet(ref tempListToShuffle);
+            // Utils.EndTimer("Shuffle", "red");
+
+            // Copy hashset in preparation for the next round
+            nextTempAvailablePositionHashSet = new HashSet<int2>(tempAvailablePositionHashSet);
             
-            while (tempAvailablePositionList.Count > 0)
+            while (tempAvailablePositionHashSet.Count > 0)
             {
-                int randomIndex = UnityEngine.Random.Range(0, tempAvailablePositionList.Count);
-                int2 pickedSpawnPosition = tempAvailablePositionList[randomIndex];
+                int2 pickedSpawnPosition = tempAvailablePositionHashSet.ElementAt(0);
 
                 cubeCount[currentCubePrefabIndex]++;
 
@@ -288,14 +290,16 @@ public class GameManager : MonoBehaviour
                 RemoveSurroundingCubePosition(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
             }
 
-            tempAvailablePositionList = nextTempAvailablePositionList;
+            tempAvailablePositionHashSet = nextTempAvailablePositionHashSet;
             currentCubePrefabIndex--;
         }
 
-        cubeCount[0] = tempAvailablePositionList.Count;
-        for (int i = 0; i < tempAvailablePositionList.Count; i++)
+
+        cubeCount[0] = tempAvailablePositionHashSet.Count;
+        int2[] finalPositionArray = tempAvailablePositionHashSet.ToArray();
+        for (int i = 0; i < tempAvailablePositionHashSet.Count; i++)
         {
-            int2 spawnPos = tempAvailablePositionList[i];
+            int2 spawnPos = finalPositionArray[i];
             finalPrefabIndex2DArray[spawnPos.x, spawnPos.y] = currentCubePrefabIndex; // 0
         }
     }
@@ -318,11 +322,11 @@ public class GameManager : MonoBehaviour
             {
                 if (x < 0 || y < 0 || x >= terrainSize.x || y >= terrainSize.z) continue;
 
-                tempAvailablePositionList.Remove(new int2(x, y));
+                tempAvailablePositionHashSet.Remove(new int2(x, y));
 
                 if (x >= xMinH && x <= xMaxH && y >= yMinH && y <= yMaxH)
                 {
-                    nextTempAvailablePositionList.Remove(new int2(x, y));
+                    nextTempAvailablePositionHashSet.Remove(new int2(x, y));
                 }
             }
     }

@@ -275,7 +275,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae715a5ef2ed7854ca169ff135b297fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useUnityMathematics: 1
   text: {fileID: 677131977}
   noiseImage: {fileID: 949739650}
   cubePrefabArray:
@@ -283,14 +282,16 @@ MonoBehaviour:
   - {fileID: 3522466454960303378, guid: 913ca1bb2397cb2478d2cbd1602b7a54, type: 3}
   - {fileID: 7803720748287341991, guid: 29e897f45e28b2e43ad6b60c2b15c928, type: 3}
   terrainSize:
-    x: 100
+    x: 300
     y: 1
-    z: 100
+    z: 300
   terrainHeight: 1
   scale:
     x: 5
     y: 5
-  offset: {x: 0, y: 0}
+  offset:
+    x: 0
+    y: 0
   roundFilter: 0
   roundFilterCurve:
     serializedVersion: 2

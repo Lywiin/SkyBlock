@@ -18,4 +18,41 @@ public static class Utils
     {
         return ((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
     }
+
+    public static HashSet<T> ShuffleListToHashSet<T>(ref List<T> inputList)
+    {
+        HashSet<T> suffledHashset = new HashSet<T>();
+
+        int randomIndex = 0;
+        while (inputList.Count > 0)
+        {
+            randomIndex = Random.Range(0, inputList.Count);
+            suffledHashset.Add(inputList[randomIndex]);
+            inputList.RemoveAt(randomIndex);
+        }
+
+        return suffledHashset;
+    }
+
+    private static float startTime;
+    private static float totalTime;
+
+    public static void StartTimer()
+    {
+        startTime = Time.realtimeSinceStartup;
+    }
+
+    public static float EndTimer(string name = "", string color = "yellow")
+    {
+        float time = totalTime = Time.realtimeSinceStartup - startTime;
+        Debug.Log("<color=" + color + "> ========= TIME ELAPSED " + name + ": " + (totalTime).ToString("F8") + "s</color>");
+        totalTime = 0f;
+        return time;
+    }
+
+    public static void EndTimerStep(string name = "")
+    {
+        totalTime += Time.realtimeSinceStartup - startTime;
+    }
+
 }
