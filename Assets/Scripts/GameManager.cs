@@ -6,7 +6,6 @@ using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Transforms;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 
 public class GameManager : MonoBehaviour
 {
@@ -30,7 +29,8 @@ public class GameManager : MonoBehaviour
     [Range(0f, 1f)] public float threshold;
 
     [Header("Generation")]
-    public int seed;
+    public uint seed = 1;
+    [HideInInspector] public Unity.Mathematics.Random rng;
 
     // DOTS
     private World world;
@@ -106,15 +106,23 @@ public class GameManager : MonoBehaviour
 
     public void RefreshSeed()
     {
-        seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+        // seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+        seed = rng.NextUInt(uint.MinValue, uint.MaxValue);
+
+        InitSeed();
     }
 
     public void InitSeed()
     {
-        UnityEngine.Random.InitState(seed);
+        // UnityEngine.Random.InitState(seed);
 
-        offset.x = UnityEngine.Random.Range(-1000000, 1000000);
-        offset.y = UnityEngine.Random.Range(-1000000, 1000000);
+        // offset.x = UnityEngine.Random.Range(-1000000, 1000000);
+        // offset.y = UnityEngine.Random.Range(-1000000, 1000000);
+
+        rng = new Unity.Mathematics.Random(seed);
+
+        offset.x = rng.NextInt(1, 2000000);
+        offset.y = rng.NextInt(1, 2000000);
     }
 
     private void DestroyTerrain()

@@ -328,7 +328,9 @@ MonoBehaviour:
     m_RotationOrder: 4
   thresholdFilterToggle: 0
   threshold: 0.2
-  seed: 0
+  seed: 1
+  rng:
+    state: 0
 --- !u!4 &558191185
 Transform:
   m_ObjectHideFlags: 0

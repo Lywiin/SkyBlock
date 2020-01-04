@@ -22,11 +22,13 @@ public static class Utils
     public static HashSet<T> ShuffleListToHashSet<T>(ref List<T> inputList)
     {
         HashSet<T> suffledHashset = new HashSet<T>();
+        Unity.Mathematics.Random rng = GameManager.Instance.rng;
 
         int randomIndex = 0;
         while (inputList.Count > 0)
         {
-            randomIndex = Random.Range(0, inputList.Count);
+            // randomIndex = Random.Range(0, inputList.Count);
+            randomIndex = rng.NextInt(0, inputList.Count);
             suffledHashset.Add(inputList[randomIndex]);
             inputList.RemoveAt(randomIndex);
         }
