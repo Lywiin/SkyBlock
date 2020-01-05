@@ -279,20 +279,16 @@ MonoBehaviour:
   noiseImage: {fileID: 949739650}
   cubePrefabArray:
   - {fileID: 5017715055655539760, guid: 62225af2f4bb24e4bb4bfae5d01d873c, type: 3}
-  - {fileID: 3522466454960303378, guid: 913ca1bb2397cb2478d2cbd1602b7a54, type: 3}
-  - {fileID: 7803720748287341991, guid: 29e897f45e28b2e43ad6b60c2b15c928, type: 3}
-  - {fileID: 7803720748287341991, guid: 2fb6389f4cdeb8d49b48936b784fcfc8, type: 3}
-  - {fileID: 7803720748287341991, guid: da29915e3f5daf646a59d72c2c08b718, type: 3}
-  - {fileID: 7803720748287341991, guid: 6da02f2532e2d86429d9825d7cf63934, type: 3}
   terrainSize:
-    x: 500
-    y: 1
-    z: 500
-  terrainHeight: 200
+    x: 50
+    y: 50
+    z: 50
+  terrainHeight: 1
   noiseScale:
-    x: 5
-    y: 5
-  waveHeight: 10
+    x: 6
+    y: 6
+    z: 6
+  waveHeight: 2
   waveSpeed: 1
   terrasseHeight: 2
   roundFilter: 1
@@ -330,7 +326,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   thresholdFilterToggle: 1
-  threshold: 0.2
+  threshold: 0.52
   seed: 1
   rng:
     state: 0

@@ -19,7 +19,7 @@ public class GameManager : MonoBehaviour
     [Header("Parameters")]
     public int3 terrainSize;
     public float terrainHeight;
-    public float2 noiseScale;
+    public float3 noiseScale;
     public float waveHeight;
     public float waveSpeed;
     public int terrasseHeight = 1;
@@ -42,11 +42,12 @@ public class GameManager : MonoBehaviour
     private GameObjectConversionSettings settings;
 
     // Perlin
-    private float2 offset;
+    private float3 offset;
     private float maxDistanceFromCenter;
     
     // Instantiate cubes
     private float[,] noise2DArray;
+    private float[,,] noise3DArray;
     private int[,] finalPrefabIndex2DArray;
     private HashSet<int2> tempAvailablePositionHashSet;
     private HashSet<int2> nextTempAvailablePositionHashSet;
@@ -84,7 +85,8 @@ public class GameManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.R))
         {
             GameManager.Instance.InitSeed();
-            GameManager.Instance.GenerateTerrain();
+            // GameManager.Instance.GenerateTerrain2D();
+            GameManager.Instance.GenerateTerrain3D();
         }
     }
 
@@ -96,7 +98,7 @@ public class GameManager : MonoBehaviour
     /************************ TERRAIN ************************/
 
     // Allocation of all variable changeable at each generation
-    private void Initialize()
+    private void Initialize2D()
     {
         cubePrefabEntityArray = new Entity[cubePrefabArray.Length];
         for (int i = 0; i < cubePrefabEntityArray.Length; i++)
@@ -110,9 +112,20 @@ public class GameManager : MonoBehaviour
         maxDistanceFromCenter = Utils.Distance(0f, 0f, terrainSize.x / 2f, terrainSize.z / 2f);
     }
 
+    private void Initialize3D()
+    {
+        cubePrefabEntityArray = new Entity[cubePrefabArray.Length];
+        for (int i = 0; i < cubePrefabEntityArray.Length; i++)
+            cubePrefabEntityArray[i] = GameObjectConversionUtility.ConvertGameObjectHierarchy(cubePrefabArray[i], settings);
+
+        noise3DArray = new float[terrainSize.x, terrainSize.y, terrainSize.z];
+        cubeCount = new int[cubePrefabArray.Length];
+
+        DestroyTerrain3D();
+    }
+
     public void RefreshSeed()
     {
-        // seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
         seed = rng.NextUInt(uint.MinValue, uint.MaxValue);
 
         InitSeed();
@@ -120,20 +133,17 @@ public class GameManager : MonoBehaviour
 
     public void InitSeed()
     {
-        // UnityEngine.Random.InitState(seed);
-
-        // offset.x = UnityEngine.Random.Range(-1000000, 1000000);
-        // offset.y = UnityEngine.Random.Range(-1000000, 1000000);
-
         rng = new Unity.Mathematics.Random(seed);
+        UnityEngine.Random.InitState(System.Convert.ToInt32(seed));
 
         offset.x = rng.NextInt(1, 2000000);
         offset.y = rng.NextInt(1, 2000000);
+        offset.z = rng.NextInt(1, 2000000);
     }
 
-    private void DestroyTerrain()
+    private void DestroyTerrain2D()
     {
-        manager.DestroyEntity(manager.CreateEntityQuery(typeof(Translation))); 
+        manager.DestroyEntity(manager.CreateEntityQuery(typeof(WaveMoveData))); 
 
         tempAvailablePositionHashSet.Clear();
         nextTempAvailablePositionHashSet.Clear();
@@ -142,10 +152,15 @@ public class GameManager : MonoBehaviour
             cubeCount[i] = 0;
     }
 
-    public void GenerateTerrain() 
+    private void DestroyTerrain3D()
     {
-        Initialize();
-        DestroyTerrain();
+        manager.DestroyEntity(manager.CreateEntityQuery(typeof(WaveMoveData))); 
+    }
+
+    public void GenerateTerrain2D() 
+    {
+        Initialize2D();
+        DestroyTerrain2D();
 
         int2 terrainSize2D = new int2(terrainSize.x, terrainSize.z);
 
@@ -155,16 +170,16 @@ public class GameManager : MonoBehaviour
         float time1 = Utils.EndTimer("Generate2DNoise");
 
         Utils.StartTimer();
-        ScaleCubes(terrainSize2D);
+        ScaleCubes2D(terrainSize2D);
         float time2 = Utils.EndTimer("ScaleCubes");
 
         Utils.StartTimer();
-        InstantiateCubes();
+        InstantiateCubes2D();
         float time3 = Utils.EndTimer("InstantiateCubes");
 
 
         float totalTime = time1 + time2 + time3;
-        Debug.Log("<color=yellow> TIME ELAPSED TOTAL: " + totalTime.ToString("F2") + "s</color>");
+        Debug.Log("<color=yellow> TIME ELAPSED TOTAL: " + totalTime.ToString("F8") + "s</color>");
         text.text = totalTime.ToString();
 
         int totalCount = 0;
@@ -178,7 +193,32 @@ public class GameManager : MonoBehaviour
         Debug.Log("<color=orange> =============================== </color>");
     }
 
-    private void InstantiateCubes()
+    public void GenerateTerrain3D()
+    {
+        Initialize3D();
+
+        Utils.StartTimer();
+        Generate3DNoise();
+        float time1 = Utils.EndTimer("Generate3DNoise");
+
+        Utils.StartTimer();
+        InstantiateCubes3D();
+        float time2 = Utils.EndTimer("InstantiateCubes3D");
+
+        float totalTime = time1 + time2;
+        Debug.Log("<color=yellow> TIME ELAPSED TOTAL: " + totalTime.ToString("F8") + "s</color>");
+        text.text = totalTime.ToString();
+
+        int totalCount = 0;
+        for (int i = 0; i < cubeCount.Length; i++)
+        {
+            // Debug.Log("<color=yellow> CUBE COUNT " + i + ": " + cubeCount[i] + "</color>");
+            totalCount += cubeCount[i];
+        }
+        Debug.Log("<color=yellow> TOTAL CUBE COUNT: " + totalCount + "</color>");
+    }
+
+    private void InstantiateCubes2D()
     {
         // string s = "";
         // for (int x = 0; x < terrainSize.x ; x++)
@@ -230,6 +270,44 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private void InstantiateCubes3D()
+    {
+        float3 newPos = float3.zero;
+        float3 rootPos = (float3)transform.position;
+        int[] indexes = new int[cubePrefabArray.Length];
+
+        NativeArray<Entity>[] cubeEntitiesArrayArray = new NativeArray<Entity>[cubeCount.Length];
+
+        for (int i = 0; i < cubeEntitiesArrayArray.Length; i++)
+        {
+            cubeEntitiesArrayArray[i] = new NativeArray<Entity>(cubeCount[i], Allocator.TempJob);
+            manager.Instantiate(cubePrefabEntityArray[i], cubeEntitiesArrayArray[i]);
+        }
+
+        for (int x = 0; x < terrainSize.x ; x++)
+            for (int y = 0; y < terrainSize.y ; y++)
+                for (int z = 0; z < terrainSize.z ; z++)
+                {
+                    if (noise3DArray[x, y, z] == 0) continue;
+
+                    Entity entity = cubeEntitiesArrayArray[0][indexes[0]];
+                    newPos = new float3(x, y, z) + rootPos;
+
+                    manager.SetComponentData(entity, new WaveMoveData 
+                    { 
+                        originPosition = newPos,
+                        waveHeight = waveHeight,
+                        waveSpeed = waveSpeed, 
+                    });
+                    indexes[0]++;
+                }
+
+        for (int i = 0; i < cubeEntitiesArrayArray.Length; i++)
+        {
+            cubeEntitiesArrayArray[i].Dispose();
+        }
+    }
+
     /************************ NOISE ************************/
 
     private void Generate2DNoise(int2 size)
@@ -241,7 +319,7 @@ public class GameManager : MonoBehaviour
             for (int y = 0; y < size.y ; y++)
             {
                 float noiseValue = GetPerlinValue2D(x, y);
-
+// Debug.Log(noiseValue);
                 if (roundFilter) noiseValue = ApplyRound2DNoiseFilter(size, x, y, noiseValue);
                 if (thresholdFilterToggle) noiseValue = ApplyThresholdFilter(noiseValue); 
 
@@ -258,13 +336,50 @@ public class GameManager : MonoBehaviour
         noiseImage.texture = noiseTexture; // Debug
     }
 
-    public float GetPerlinValue2D(float x, float y)
+    private float GetPerlinValue2D(float x, float y)
     {
         float xCoord = x / terrainSize.x * noiseScale.x + offset.x;
         float yCoord = y / terrainSize.z * noiseScale.y + offset.y;
 
         return Mathf.PerlinNoise(xCoord, yCoord);
     }
+
+    private void Generate3DNoise()
+    {
+        for (int x = 0; x < terrainSize.x ; x++)
+            for (int y = 0; y < terrainSize.y ; y++)
+                for (int z = 0; z < terrainSize.z ; z++)
+                {
+                    float noiseValue = GetPerlinValue3D(x, y, z);
+// Debug.Log(noiseValue);
+                    if (noiseValue > threshold)
+                    {
+                        noise3DArray[x, y, z] = noiseValue;
+                        cubeCount[0]++;
+                    }else
+                    {
+                        noise3DArray[x, y, z] = 0f;
+                    }
+                }
+    }
+    
+    private float GetPerlinValue3D(float x, float y, float z)
+    {
+        float xCoord = x / terrainSize.x * noiseScale.x + offset.x;
+        float yCoord = y / terrainSize.y * noiseScale.y + offset.y;
+        float zCoord = z / terrainSize.z * noiseScale.z + offset.z;
+
+        float xy = Mathf.PerlinNoise(xCoord, yCoord);
+        float yz = Mathf.PerlinNoise(yCoord, zCoord);
+        float xz = Mathf.PerlinNoise(xCoord, zCoord);
+        
+        float yx = Mathf.PerlinNoise(yCoord, xCoord);
+        float zy = Mathf.PerlinNoise(zCoord, yCoord);
+        float zx = Mathf.PerlinNoise(zCoord, xCoord);
+
+        float xyz = xy + yz + xz + yx + zy + zx;
+        return xyz / 6f;
+    } 
 
     private float ApplyRound2DNoiseFilter(int2 size, int x, int y, float value)
     {
@@ -281,7 +396,7 @@ public class GameManager : MonoBehaviour
 
     /************************ CUBE POSITION ************************/
 
-    private void ScaleCubes(int2 size)
+    private void ScaleCubes2D(int2 size)
     {
         int currentCubePrefabIndex = cubePrefabArray.Length - 1;
 
@@ -303,7 +418,7 @@ public class GameManager : MonoBehaviour
                 cubeCount[currentCubePrefabIndex]++;
 
                 finalPrefabIndex2DArray[pickedSpawnPosition.x, pickedSpawnPosition.y] = currentCubePrefabIndex;
-                RemoveSurroundingCubePosition(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
+                RemoveSurroundingCubePosition2D(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
             }
 
             tempAvailablePositionHashSet = nextTempAvailablePositionHashSet;
@@ -320,7 +435,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private void RemoveSurroundingCubePosition([ReadOnly] ref int2 pickedPos, [ReadOnly] ref int index)
+    private void RemoveSurroundingCubePosition2D([ReadOnly] ref int2 pickedPos, [ReadOnly] ref int index)
     {
         int diameter = index * 2;
         int xMinD = pickedPos.x - diameter;
