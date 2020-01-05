@@ -22,6 +22,9 @@ public class GameManager : MonoBehaviour
     public float2 noiseScale;
     public float waveHeight;
     public float waveSpeed;
+    [Range(0f, 1f)] public float splitChance;
+    public bool meanNoiseB;
+    public int terasseHeight = 1;
 
     [Header("Filters")]
     public bool roundFilter;
@@ -50,6 +53,9 @@ public class GameManager : MonoBehaviour
     private HashSet<int2> tempAvailablePositionHashSet;
     private HashSet<int2> nextTempAvailablePositionHashSet;
     private int[] cubeCount;
+
+    private int smallerCubeSize;
+    private int biggerCubeSize;
 
 
     // Instance
@@ -107,6 +113,9 @@ public class GameManager : MonoBehaviour
         cubeCount = new int[cubePrefabArray.Length];
 
         maxDistanceFromCenter = Utils.Distance(0f, 0f, terrainSize.x / 2f, terrainSize.z / 2f);
+
+        smallerCubeSize = (int)cubePrefabArray[0].GetComponent<Renderer>().bounds.size.x;
+        biggerCubeSize = (int)cubePrefabArray[cubePrefabArray.Length - 1].GetComponent<Renderer>().bounds.size.x;
     }
 
     public void RefreshSeed()
@@ -154,8 +163,10 @@ public class GameManager : MonoBehaviour
         float time1 = Utils.EndTimer("Generate2DNoise");
 
         Utils.StartTimer();
-        ScaleCubes(terrainSize2D);
-        float time2 = Utils.EndTimer("ScaleCubes");
+        // ScaleCubes(terrainSize2D);
+        // float time2 = Utils.EndTimer("ScaleCubes");
+        SetCubePrefabsAtPositions();
+        float time2 = Utils.EndTimer("SetCubePrefabsAtPositions");
 
         Utils.StartTimer();
         InstantiateCubes();
@@ -183,11 +194,18 @@ public class GameManager : MonoBehaviour
         // {
         //     for (int z = 0; z < terrainSize.z ; z++)
         //     {
-        //         s += finalPrefabIndex2DArray[x, z] + ", ";
+        //         s += finalPrefabIndex2DArray[x, z] + "\t";
         //     }
         //     s += "\n";
         // }
         // Debug.Log(s);
+
+        // for (int i = 0; i < cubeCount.Length; i++)
+        //     Debug.Log(cubeCount[i]);
+
+        for (int x = 0; x < terrainSize.x ; x++)
+            for (int z = 0; z < terrainSize.z ; z++)
+                if (finalPrefabIndex2DArray[x, z] != -1) cubeCount[finalPrefabIndex2DArray[x, z]]++;
 
         float3 newPos = float3.zero;
         float3 rootPos = (float3)transform.position;
@@ -209,7 +227,22 @@ public class GameManager : MonoBehaviour
                 int cubePrefabIndex = finalPrefabIndex2DArray[x, z];
 
                 Entity entity = cubeEntitiesArrayArray[cubePrefabIndex][indexes[cubePrefabIndex]];
-                newPos = new float3(x, (int)(noise2DArray[x, z] * terrainHeight), z) + rootPos;
+
+                float meanNoise = 0f;
+                if (meanNoiseB)
+                {
+                    float power = Mathf.Pow(2, cubePrefabIndex);
+                    for (int x2 = x; x2 < x + power ; x2++)
+                        for (int z2 = z; z2 < z + power ; z2++)
+                            meanNoise += noise2DArray[x2, z2];
+                    meanNoise /= power * power;
+                } else 
+                {
+                    meanNoise = noise2DArray[x, z];
+                }
+
+                float yPos = (int)(meanNoise * terrainHeight * smallerCubeSize) / smallerCubeSize * terasseHeight;
+                newPos = new float3(x * smallerCubeSize, yPos, z * smallerCubeSize) + rootPos;
 
                 manager.SetComponentData(entity, new WaveMoveData 
                 { 
@@ -243,9 +276,17 @@ public class GameManager : MonoBehaviour
                 if (thresholdFilterToggle) noiseValue = ApplyThresholdFilter(noiseValue); 
 
                 noise2DArray[x, y] = noiseValue;
-                if (noiseValue != 0) tempAvailablePositionHashSet.Add(new int2(x, y));
+                // if (noiseValue != 0) tempAvailablePositionHashSet.Add(new int2(x, y));
 
-                finalPrefabIndex2DArray[x, y] = -1; // Use the double for loop to initialize array
+                if (noiseValue != 0) 
+                {
+                    finalPrefabIndex2DArray[x, y] = 0;
+                    // cubeCount[0]++;
+                }
+                else
+                {
+                    finalPrefabIndex2DArray[x, y] = -1;
+                }
 
                 noiseTexture.SetPixel(x, y, new Color(noiseValue, noiseValue, noiseValue)); // Debug
             }
@@ -277,6 +318,67 @@ public class GameManager : MonoBehaviour
     }
 
     /************************ CUBE POSITION ************************/
+
+    private void SetCubePrefabsAtPositions()
+    {
+        int step = biggerCubeSize / smallerCubeSize;
+
+        for (int x = 0; x < terrainSize.x ; x += step)
+		{
+            for (int z = 0; z < terrainSize.z ; z += step)
+            {
+                SetCubePrefabsInChunk(x, z, step);
+            }
+        }
+    }
+
+    private void SetCubePrefabsInChunk(int originX, int originZ, int currentStep)
+    {
+        if (originX >= terrainSize.x || originZ >= terrainSize.z) return;
+
+        if (finalPrefabIndex2DArray[originX, originZ] == -1)
+        {
+            for (int x = originX; x < originX + currentStep ; x++)
+                for (int z = originZ; z < originZ + currentStep ; z++)
+                    finalPrefabIndex2DArray[originX, originZ] = -1;
+            return;
+        }
+
+        bool split = rng.NextFloat() < splitChance;
+
+// ADD -1 case
+        if (split)
+        {
+            int nextStep = currentStep / 2;
+
+            if (nextStep == 1) return;
+
+            for (int x = originX; x < originX + currentStep ; x += nextStep)
+                for (int z = originZ; z < originZ + currentStep ; z += nextStep)
+                {
+                    if (x + nextStep - 1 >= terrainSize.x || z + nextStep - 1 >= terrainSize.z) continue;
+                    SetCubePrefabsInChunk(x, z, nextStep);
+                }
+        }
+        else
+        {
+            int prefabIndex = (int)Mathf.Log(currentStep, 2);
+            finalPrefabIndex2DArray[originX, originZ] = prefabIndex;
+            // cubeCount[prefabIndex]++;
+
+            for (int x = originX; x < originX + currentStep ; x++)
+                for (int z = originZ; z < originZ + currentStep ; z++)
+                {
+                    if (x >= terrainSize.x || z >= terrainSize.z) continue;
+
+                    if (finalPrefabIndex2DArray[x, z] != -1)
+                    {
+                        if (x != originX || z != originZ) finalPrefabIndex2DArray[x, z] = -1;
+                        // cubeCount[0]--;
+                    }
+                }
+        }
+    }
 
     private void ScaleCubes(int2 size)
     {
