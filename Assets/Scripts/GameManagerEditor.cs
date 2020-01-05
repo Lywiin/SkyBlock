@@ -15,6 +15,7 @@ public class GameManagerEditor : Editor
         GUILayout.Space(10);
         if (GUILayout.Button("Generate Terrain") && Application.isPlaying)
         {   
+            // GameManager.Instance.InitSeed();
             GameManager.Instance.GenerateTerrain();
         }
 

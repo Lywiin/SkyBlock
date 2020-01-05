@@ -22,6 +22,7 @@ public class GameManager : MonoBehaviour
     public float2 noiseScale;
     public float waveHeight;
     public float waveSpeed;
+    public int terrasseHeight = 1;
 
     [Header("Filters")]
     public bool roundFilter;
@@ -169,6 +170,7 @@ public class GameManager : MonoBehaviour
         int totalCount = 0;
         for (int i = 0; i < cubeCount.Length; i++)
         {
+            Debug.Log("<color=yellow> CUBE COUNT " + i + ": " + cubeCount[i] + "</color>");
             totalCount += cubeCount[i];
         }
         Debug.Log("<color=yellow> TOTAL CUBE COUNT: " + totalCount + "</color>");
@@ -209,7 +211,8 @@ public class GameManager : MonoBehaviour
                 int cubePrefabIndex = finalPrefabIndex2DArray[x, z];
 
                 Entity entity = cubeEntitiesArrayArray[cubePrefabIndex][indexes[cubePrefabIndex]];
-                newPos = new float3(x, (int)(noise2DArray[x, z] * terrainHeight), z) + rootPos;
+                float y = (int)(noise2DArray[x, z] * terrainHeight) / terrasseHeight * terrasseHeight;
+                newPos = new float3(x, y, z) + rootPos;
 
                 manager.SetComponentData(entity, new WaveMoveData 
                 { 
@@ -317,18 +320,18 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private void RemoveSurroundingCubePosition([ReadOnly] ref int2 pickedPos, [ReadOnly] ref int radius)
+    private void RemoveSurroundingCubePosition([ReadOnly] ref int2 pickedPos, [ReadOnly] ref int index)
     {
-        int radiusD = radius * 2;
-        int xMinD = pickedPos.x - radiusD;
-        int xMaxD = pickedPos.x + radiusD;
-        int yMinD = pickedPos.y - radiusD;
-        int yMaxD = pickedPos.y + radiusD;
+        int diameter = index * 2;
+        int xMinD = pickedPos.x - diameter;
+        int xMaxD = pickedPos.x + diameter;
+        int yMinD = pickedPos.y - diameter;
+        int yMaxD = pickedPos.y + diameter;
 
-        int xMinH = xMinD + radius;
-        int xMaxH = xMaxD - radius;
-        int yMinH = yMinD + radius;
-        int yMaxH = yMaxD - radius;
+        int xMinH = xMinD + index;
+        int xMaxH = xMaxD - index;
+        int yMinH = yMinD + index;
+        int yMaxH = yMaxD - index;
 
         for (int x = xMinD; x <= xMaxD ; x++)
             for (int y = yMinD; y <= yMaxD ; y++)

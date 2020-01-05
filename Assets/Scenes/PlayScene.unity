@@ -294,6 +294,7 @@ MonoBehaviour:
     y: 5
   waveHeight: 10
   waveSpeed: 1
+  terrasseHeight: 2
   roundFilter: 1
   roundFilterCurve:
     serializedVersion: 2
