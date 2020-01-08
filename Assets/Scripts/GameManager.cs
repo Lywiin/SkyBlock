@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Entities;
@@ -23,6 +23,9 @@ public class GameManager : MonoBehaviour
     public float waveHeight;
     public float waveSpeed;
     public int terrasseHeight = 1;
+    public bool terrain2D;
+    public bool terrain3D;
+
 
     [Header("Filters")]
     public bool roundFilter;
@@ -155,6 +158,12 @@ public class GameManager : MonoBehaviour
     private void DestroyTerrain3D()
     {
         manager.DestroyEntity(manager.CreateEntityQuery(typeof(WaveMoveData))); 
+    }
+
+    public void GenerateTerrain()
+    {
+        if (terrain2D) GenerateTerrain2D();
+        if (terrain3D) GenerateTerrain3D();
     }
 
     public void GenerateTerrain2D() 

@@ -285,9 +285,9 @@ MonoBehaviour:
     z: 50
   terrainHeight: 1
   noiseScale:
-    x: 6
-    y: 6
-    z: 6
+    x: 3
+    y: 1
+    z: 3
   waveHeight: 2
   waveSpeed: 1
   terrasseHeight: 2
@@ -329,7 +329,7 @@ MonoBehaviour:
   threshold: 0.52
   seed: 1
   rng:
-    state: 0
+    state: 1857390366
 --- !u!4 &558191185
 Transform:
   m_ObjectHideFlags: 0

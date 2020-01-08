@@ -15,17 +15,14 @@ public class GameManagerEditor : Editor
         GUILayout.Space(10);
         if (GUILayout.Button("Generate Terrain") && Application.isPlaying)
         {   
-            // GameManager.Instance.InitSeed();
-            // GameManager.Instance.GenerateTerrain2D();
-            GameManager.Instance.GenerateTerrain3D();
+            GameManager.Instance.GenerateTerrain();
         }
 
         GUILayout.Space(5);
         if (GUILayout.Button("Generate Random Terrain") && Application.isPlaying)
         {   
             GameManager.Instance.RefreshSeed();
-            // GameManager.Instance.GenerateTerrain2D();
-            GameManager.Instance.GenerateTerrain3D();
+            GameManager.Instance.GenerateTerrain();
         }
         
         SceneView.RepaintAll();
