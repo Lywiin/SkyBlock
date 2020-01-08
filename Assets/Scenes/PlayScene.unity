@@ -279,6 +279,8 @@ MonoBehaviour:
   noiseImage: {fileID: 949739650}
   cubePrefabArray:
   - {fileID: 5017715055655539760, guid: 62225af2f4bb24e4bb4bfae5d01d873c, type: 3}
+  - {fileID: 3522466454960303378, guid: 913ca1bb2397cb2478d2cbd1602b7a54, type: 3}
+  - {fileID: 7803720748287341991, guid: 29e897f45e28b2e43ad6b60c2b15c928, type: 3}
   terrainSize:
     x: 50
     y: 50
@@ -291,6 +293,8 @@ MonoBehaviour:
   waveHeight: 2
   waveSpeed: 1
   terrasseHeight: 2
+  terrain2D: 0
+  terrain3D: 0
   roundFilter: 1
   roundFilterCurve:
     serializedVersion: 2

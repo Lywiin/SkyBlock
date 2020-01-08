@@ -52,8 +52,11 @@ public class GameManager : MonoBehaviour
     private float[,] noise2DArray;
     private float[,,] noise3DArray;
     private int[,] finalPrefabIndex2DArray;
+    private int[,,] finalPrefabIndex3DArray;
     private HashSet<int2> tempAvailablePositionHashSet;
     private HashSet<int2> nextTempAvailablePositionHashSet;
+    private HashSet<int3> tempAvailablePositionHashSet3D;
+    private HashSet<int3> nextTempAvailablePositionHashSet3D;
     private int[] cubeCount;
 
 
@@ -81,6 +84,9 @@ public class GameManager : MonoBehaviour
 
         tempAvailablePositionHashSet = new HashSet<int2>();
         nextTempAvailablePositionHashSet = new HashSet<int2>();
+
+        tempAvailablePositionHashSet3D = new HashSet<int3>();
+        nextTempAvailablePositionHashSet3D = new HashSet<int3>();
     }
 
     private void Update()
@@ -121,6 +127,7 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < cubePrefabEntityArray.Length; i++)
             cubePrefabEntityArray[i] = GameObjectConversionUtility.ConvertGameObjectHierarchy(cubePrefabArray[i], settings);
 
+        finalPrefabIndex3DArray = new int[terrainSize.x, terrainSize.y, terrainSize.z];
         noise3DArray = new float[terrainSize.x, terrainSize.y, terrainSize.z];
         cubeCount = new int[cubePrefabArray.Length];
 
@@ -211,10 +218,14 @@ public class GameManager : MonoBehaviour
         float time1 = Utils.EndTimer("Generate3DNoise");
 
         Utils.StartTimer();
-        InstantiateCubes3D();
-        float time2 = Utils.EndTimer("InstantiateCubes3D");
+        ScaleCubes3D();
+        float time2 = Utils.EndTimer("ScaleCubes3D");
 
-        float totalTime = time1 + time2;
+        Utils.StartTimer();
+        InstantiateCubes3D();
+        float time3 = Utils.EndTimer("InstantiateCubes3D");
+
+        float totalTime = time1 + time2 + time3;
         Debug.Log("<color=yellow> TIME ELAPSED TOTAL: " + totalTime.ToString("F8") + "s</color>");
         text.text = totalTime.ToString();
 
@@ -297,9 +308,10 @@ public class GameManager : MonoBehaviour
             for (int y = 0; y < terrainSize.y ; y++)
                 for (int z = 0; z < terrainSize.z ; z++)
                 {
-                    if (noise3DArray[x, y, z] == 0) continue;
+                    if (finalPrefabIndex3DArray[x, y, z] == -1) continue;
+                    int cubePrefabIndex = finalPrefabIndex3DArray[x, y, z];
 
-                    Entity entity = cubeEntitiesArrayArray[0][indexes[0]];
+                    Entity entity = cubeEntitiesArrayArray[cubePrefabIndex][indexes[cubePrefabIndex]];
                     newPos = new float3(x, y, z) + rootPos;
 
                     manager.SetComponentData(entity, new WaveMoveData 
@@ -308,7 +320,7 @@ public class GameManager : MonoBehaviour
                         waveHeight = waveHeight,
                         waveSpeed = waveSpeed, 
                     });
-                    indexes[0]++;
+                    indexes[cubePrefabIndex]++;
                 }
 
         for (int i = 0; i < cubeEntitiesArrayArray.Length; i++)
@@ -360,15 +372,11 @@ public class GameManager : MonoBehaviour
                 for (int z = 0; z < terrainSize.z ; z++)
                 {
                     float noiseValue = GetPerlinValue3D(x, y, z);
-// Debug.Log(noiseValue);
-                    if (noiseValue > threshold)
-                    {
-                        noise3DArray[x, y, z] = noiseValue;
-                        cubeCount[0]++;
-                    }else
-                    {
-                        noise3DArray[x, y, z] = 0f;
-                    }
+                    
+                    noise3DArray[x, y, z] = noiseValue;
+                    if (noiseValue > threshold) tempAvailablePositionHashSet3D.Add(new int3(x, y, z));
+                    
+                    finalPrefabIndex3DArray[x, y, z] = -1;
                 }
     }
     
@@ -444,6 +452,45 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private void ScaleCubes3D()
+    {
+        int currentCubePrefabIndex = cubePrefabArray.Length - 1;
+
+        // Shuffle tempAvailablePositionList
+        // Utils.StartTimer();
+        List<int3> tempListToShuffle = tempAvailablePositionHashSet3D.ToList();
+        tempAvailablePositionHashSet3D = Utils.ShuffleListToHashSet(ref tempListToShuffle);
+        // Utils.EndTimer("Shuffle", "red");
+
+        while (currentCubePrefabIndex > 0)
+        {
+            // Copy hashset in preparation for the next round
+            nextTempAvailablePositionHashSet3D = new HashSet<int3>(tempAvailablePositionHashSet3D);
+            
+            while (tempAvailablePositionHashSet3D.Count > 0)
+            {
+                int3 pickedSpawnPosition = tempAvailablePositionHashSet3D.ElementAt(0);
+
+                cubeCount[currentCubePrefabIndex]++;
+
+                finalPrefabIndex3DArray[pickedSpawnPosition.x, pickedSpawnPosition.y, pickedSpawnPosition.z] = currentCubePrefabIndex;
+                RemoveSurroundingCubePosition3D(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
+            }
+
+            tempAvailablePositionHashSet3D = nextTempAvailablePositionHashSet3D;
+            currentCubePrefabIndex--;
+        }
+
+
+        cubeCount[0] = tempAvailablePositionHashSet3D.Count;
+        int3[] finalPositionArray = tempAvailablePositionHashSet3D.ToArray();
+        for (int i = 0; i < tempAvailablePositionHashSet3D.Count; i++)
+        {
+            int3 spawnPos = finalPositionArray[i];
+            finalPrefabIndex3DArray[spawnPos.x, spawnPos.y, spawnPos.z] = currentCubePrefabIndex; // 0
+        }
+    }
+
     private void RemoveSurroundingCubePosition2D([ReadOnly] ref int2 pickedPos, [ReadOnly] ref int index)
     {
         int diameter = index * 2;
@@ -469,5 +516,37 @@ public class GameManager : MonoBehaviour
                     nextTempAvailablePositionHashSet.Remove(new int2(x, y));
                 }
             }
+    }
+
+        private void RemoveSurroundingCubePosition3D([ReadOnly] ref int3 pickedPos, [ReadOnly] ref int index)
+    {
+        int diameter = index * 2;
+        int xMinD = pickedPos.x - diameter;
+        int xMaxD = pickedPos.x + diameter;
+        int yMinD = pickedPos.y - diameter;
+        int yMaxD = pickedPos.y + diameter;
+        int zMinD = pickedPos.z - diameter;
+        int zMaxD = pickedPos.z + diameter;
+
+        int xMinH = xMinD + index;
+        int xMaxH = xMaxD - index;
+        int yMinH = yMinD + index;
+        int yMaxH = yMaxD - index;
+        int zMinH = zMinD + index;
+        int zMaxH = zMaxD - index;
+
+        for (int x = xMinD; x <= xMaxD ; x++)
+            for (int y = yMinD; y <= yMaxD ; y++)
+                for (int z = zMinD; z <= zMaxD ; z++)
+                {
+                    if (x < 0 || y < 0 || z < 0 || x >= terrainSize.x || y >= terrainSize.y || z >= terrainSize.z) continue;
+
+                    tempAvailablePositionHashSet3D.Remove(new int3(x, y, z));
+
+                    if (x >= xMinH && x <= xMaxH && y >= yMinH && y <= yMaxH && z >= zMinH && z <= zMaxH)
+                    {
+                        nextTempAvailablePositionHashSet3D.Remove(new int3(x, y, z));
+                    }
+                }
     }
 }
