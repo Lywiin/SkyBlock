@@ -278,9 +278,10 @@ MonoBehaviour:
   text: {fileID: 677131977}
   noiseImage: {fileID: 949739650}
   cubePrefabArray:
-  - {fileID: 5017715055655539760, guid: 62225af2f4bb24e4bb4bfae5d01d873c, type: 3}
-  - {fileID: 3522466454960303378, guid: 913ca1bb2397cb2478d2cbd1602b7a54, type: 3}
-  - {fileID: 7803720748287341991, guid: 29e897f45e28b2e43ad6b60c2b15c928, type: 3}
+  - {fileID: 7803720748287341991, guid: 12d334a2fadaf5e49b93f607bfd5e8d2, type: 3}
+  - {fileID: 7803720748287341991, guid: c1808bb5c3bb68c4995cc40beaaf61d1, type: 3}
+  - {fileID: 7803720748287341991, guid: 40eaaee561dc3064a8f8b3abc056862c, type: 3}
+  - {fileID: 7803720748287341991, guid: 46ce36a5e0d00d44fa91788dd9ee3835, type: 3}
   terrainSize:
     x: 50
     y: 50
@@ -293,8 +294,9 @@ MonoBehaviour:
   waveHeight: 2
   waveSpeed: 1
   terrasseHeight: 2
+  penetration: 0
   terrain2D: 0
-  terrain3D: 0
+  terrain3D: 1
   roundFilter: 1
   roundFilterCurve:
     serializedVersion: 2

@@ -58,6 +58,7 @@ public class GameManager : MonoBehaviour
     private HashSet<int3> tempAvailablePositionHashSet3D;
     private HashSet<int3> nextTempAvailablePositionHashSet3D;
     private int[] cubeCount;
+    private int[] cubeSize;
 
 
     // Instance
@@ -129,7 +130,11 @@ public class GameManager : MonoBehaviour
 
         finalPrefabIndex3DArray = new int[terrainSize.x, terrainSize.y, terrainSize.z];
         noise3DArray = new float[terrainSize.x, terrainSize.y, terrainSize.z];
+
         cubeCount = new int[cubePrefabArray.Length];
+        cubeSize = new int[cubePrefabArray.Length];
+        for (int i = 0; i < cubeSize.Length; i++)
+            cubeSize[i] = (int)cubePrefabArray[i].GetComponent<Renderer>().bounds.size.x;
 
         DestroyTerrain3D();
     }
@@ -462,18 +467,18 @@ public class GameManager : MonoBehaviour
         tempAvailablePositionHashSet3D = Utils.ShuffleListToHashSet(ref tempListToShuffle);
         // Utils.EndTimer("Shuffle", "red");
 
-        while (currentCubePrefabIndex > 0)
+        while (currentCubePrefabIndex >= 0)
         {
             // Copy hashset in preparation for the next round
-            nextTempAvailablePositionHashSet3D = new HashSet<int3>(tempAvailablePositionHashSet3D);
+            if (currentCubePrefabIndex > 0) nextTempAvailablePositionHashSet3D = new HashSet<int3>(tempAvailablePositionHashSet3D);
             
             while (tempAvailablePositionHashSet3D.Count > 0)
             {
                 int3 pickedSpawnPosition = tempAvailablePositionHashSet3D.ElementAt(0);
 
                 cubeCount[currentCubePrefabIndex]++;
-
                 finalPrefabIndex3DArray[pickedSpawnPosition.x, pickedSpawnPosition.y, pickedSpawnPosition.z] = currentCubePrefabIndex;
+
                 RemoveSurroundingCubePosition3D(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
             }
 
@@ -482,13 +487,13 @@ public class GameManager : MonoBehaviour
         }
 
 
-        cubeCount[0] = tempAvailablePositionHashSet3D.Count;
-        int3[] finalPositionArray = tempAvailablePositionHashSet3D.ToArray();
-        for (int i = 0; i < tempAvailablePositionHashSet3D.Count; i++)
-        {
-            int3 spawnPos = finalPositionArray[i];
-            finalPrefabIndex3DArray[spawnPos.x, spawnPos.y, spawnPos.z] = currentCubePrefabIndex; // 0
-        }
+        // cubeCount[0] = tempAvailablePositionHashSet3D.Count;
+        // int3[] finalPositionArray = tempAvailablePositionHashSet3D.ToArray();
+        // for (int i = 0; i < tempAvailablePositionHashSet3D.Count; i++)
+        // {
+        //     int3 spawnPos = finalPositionArray[i];
+        //     finalPrefabIndex3DArray[spawnPos.x, spawnPos.y, spawnPos.z] = currentCubePrefabIndex; // 0
+        // }
     }
 
     private void RemoveSurroundingCubePosition2D([ReadOnly] ref int2 pickedPos, [ReadOnly] ref int index)
@@ -518,9 +523,9 @@ public class GameManager : MonoBehaviour
             }
     }
 
-        private void RemoveSurroundingCubePosition3D([ReadOnly] ref int3 pickedPos, [ReadOnly] ref int index)
+    private void RemoveSurroundingCubePosition3D([ReadOnly] ref int3 pickedPos, [ReadOnly] ref int index)
     {
-        int diameter = index * 2;
+        int diameter = cubeSize[index] - 1;
         int xMinD = pickedPos.x - diameter;
         int xMaxD = pickedPos.x + diameter;
         int yMinD = pickedPos.y - diameter;
@@ -528,12 +533,12 @@ public class GameManager : MonoBehaviour
         int zMinD = pickedPos.z - diameter;
         int zMaxD = pickedPos.z + diameter;
 
-        int xMinH = xMinD + index;
-        int xMaxH = xMaxD - index;
-        int yMinH = yMinD + index;
-        int yMaxH = yMaxD - index;
-        int zMinH = zMinD + index;
-        int zMaxH = zMaxD - index;
+        int xMinH = xMinD + diameter / 2;
+        int xMaxH = xMaxD - diameter / 2;
+        int yMinH = yMinD + diameter / 2;
+        int yMaxH = yMaxD - diameter / 2;
+        int zMinH = zMinD + diameter / 2;
+        int zMaxH = zMaxD - diameter / 2;
 
         for (int x = xMinD; x <= xMaxD ; x++)
             for (int y = yMinD; y <= yMaxD ; y++)
@@ -543,7 +548,7 @@ public class GameManager : MonoBehaviour
 
                     tempAvailablePositionHashSet3D.Remove(new int3(x, y, z));
 
-                    if (x >= xMinH && x <= xMaxH && y >= yMinH && y <= yMaxH && z >= zMinH && z <= zMaxH)
+                    if (index > 0 && x >= xMinH && x <= xMaxH && y >= yMinH && y <= yMaxH && z >= zMinH && z <= zMaxH)
                     {
                         nextTempAvailablePositionHashSet3D.Remove(new int3(x, y, z));
                     }
