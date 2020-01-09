@@ -29,7 +29,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Filters")]
     public bool roundFilter;
-    public AnimationCurve roundFilterCurve = new AnimationCurve(new Keyframe(0f, 1f) ,new Keyframe(0.5f, 0f), new Keyframe(1f, 0f));
+    public AnimationCurve roundFilterCurve = new AnimationCurve(new Keyframe(0f, 1f) , new Keyframe(0.75f, 0.85f, -0.5f, -0.5f), new Keyframe(1f, 0f));
     public bool thresholdFilterToggle;
     [Range(0f, 1f)] public float threshold;
 
@@ -46,7 +46,9 @@ public class GameManager : MonoBehaviour
 
     // Perlin
     private float3 offset;
+    private int3 centerPoint;
     private float maxDistanceFromCenter;
+    private float maxDistanceFromCenterPoint;
     
     // Instantiate cubes
     private float[,] noise2DArray;
@@ -135,6 +137,9 @@ public class GameManager : MonoBehaviour
         cubeSize = new int[cubePrefabArray.Length];
         for (int i = 0; i < cubeSize.Length; i++)
             cubeSize[i] = (int)cubePrefabArray[i].GetComponent<Renderer>().bounds.size.x;
+
+        centerPoint = new int3(terrainSize.x / 2, terrainSize.y - 1, terrainSize.z / 2);
+        maxDistanceFromCenterPoint = math.distance(int3.zero, centerPoint);
 
         DestroyTerrain3D();
     }
@@ -377,6 +382,8 @@ public class GameManager : MonoBehaviour
                 for (int z = 0; z < terrainSize.z ; z++)
                 {
                     float noiseValue = GetPerlinValue3D(x, y, z);
+
+                    if (roundFilter) noiseValue = ApplyRound3DNoiseFilter(new int3(x, y, z), noiseValue);
                     
                     noise3DArray[x, y, z] = noiseValue;
                     if (noiseValue > threshold) tempAvailablePositionHashSet3D.Add(new int3(x, y, z));
@@ -408,6 +415,14 @@ public class GameManager : MonoBehaviour
         float distanceFromCenter = Utils.Distance(x, y, size.x / 2, size.y / 2);
         float distanceFromCenterNormalized = distanceFromCenter / maxDistanceFromCenter;
         float attenuationCoef = roundFilterCurve.Evaluate(distanceFromCenterNormalized);
+        return value * attenuationCoef;
+    }
+
+    private float ApplyRound3DNoiseFilter(int3 point, float value)
+    {
+        float distanceFromCenterPoint = math.distance(point, centerPoint);
+        float distanceFromCenterPointNormalized = distanceFromCenterPoint / maxDistanceFromCenterPoint;
+        float attenuationCoef = roundFilterCurve.Evaluate(distanceFromCenterPointNormalized);
         return value * attenuationCoef;
     }
 
