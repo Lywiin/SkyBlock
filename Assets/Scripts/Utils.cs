@@ -28,13 +28,28 @@ public static class Utils
         int randomIndex = 0;
         while (inputList.Count > 0)
         {
-            // randomIndex = Random.Range(0, inputList.Count);
             randomIndex = rng.NextInt(0, inputList.Count);
             suffledHashset.Add(inputList[randomIndex]);
             inputList.RemoveAt(randomIndex);
         }
 
         return suffledHashset;
+    }
+
+    public static void ShuffleListToHashSet<T>(ref List<T> inputList, ref HashSet<T>[] outHashsetArray)
+    {
+        Unity.Mathematics.Random rng = GameManager.Instance.Rng;
+
+        int randomIndex = 0;
+        while (inputList.Count > 0)
+        {
+            randomIndex = rng.NextInt(0, inputList.Count);
+
+            for (int i = 0; i < outHashsetArray.Length; i++)
+                outHashsetArray[i].Add(inputList[randomIndex]);
+
+            inputList.RemoveAt(randomIndex);
+        }
     }
 
     private static float startTime;

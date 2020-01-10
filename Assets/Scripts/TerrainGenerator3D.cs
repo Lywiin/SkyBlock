@@ -17,6 +17,8 @@ public class TerrainGenerator3D : MonoBehaviour
     public float3 noiseScale;
     public float waveHeight;
     public float waveSpeed;
+    public bool fillNone;
+    public bool fillMaxHoles;
 
     [Header("Filters")]
     public bool roundFilter;
@@ -33,8 +35,9 @@ public class TerrainGenerator3D : MonoBehaviour
     private Entity[] cubePrefabEntityArray;
     private float[,,] noise3DArray;
     private int[,,] finalPrefabIndex3DArray;
-    private HashSet<int3> tempAvailablePositionHashSet3D;
-    private HashSet<int3> nextTempAvailablePositionHashSet3D;
+    private HashSet<int3>[] tempPositionHashSetArray;
+    private HashSet<int3> tempPositionHashSet;
+    // private HashSet<int3> nextTempAvailablePositionHashSet3D;
     private int[] cubeCount;
     private int[] cubeSize;
 
@@ -49,8 +52,8 @@ public class TerrainGenerator3D : MonoBehaviour
 
     private void Start()
     {
-        tempAvailablePositionHashSet3D = new HashSet<int3>();
-        nextTempAvailablePositionHashSet3D = new HashSet<int3>();
+        tempPositionHashSet = new HashSet<int3>();
+        // nextTempAvailablePositionHashSet3D = new HashSet<int3>();
     }
 
     // private void Update()
@@ -71,6 +74,10 @@ public class TerrainGenerator3D : MonoBehaviour
         settings = GameManager.Instance.Settings;
         noiseImage = GameManager.Instance.noiseImage;
         rng = GameManager.Instance.Rng;
+
+        tempPositionHashSetArray = new HashSet<int3>[cubePrefabArray.Length];
+        for (int i = 0; i < tempPositionHashSetArray.Length; i++)
+            tempPositionHashSetArray[i] = new HashSet<int3>();
         
         cubePrefabEntityArray = new Entity[cubePrefabArray.Length];
         for (int i = 0; i < cubePrefabEntityArray.Length; i++)
@@ -96,14 +103,14 @@ public class TerrainGenerator3D : MonoBehaviour
     {
         manager.DestroyEntity(manager.CreateEntityQuery(typeof(WaveMoveData))); 
 
-        tempAvailablePositionHashSet3D.Clear();
-        nextTempAvailablePositionHashSet3D.Clear();
+        tempPositionHashSet.Clear();
+        // nextTempAvailablePositionHashSet3D.Clear();
     }
 
     public void GenerateTerrain3D()
     {
         Debug.Log("<color=red> ========= GENERATE TERRAIN 2D =========</color>");
-        
+
         Initialize3D();
         DestroyTerrain3D();
 
@@ -126,7 +133,7 @@ public class TerrainGenerator3D : MonoBehaviour
         int totalCount = 0;
         for (int i = 0; i < cubeCount.Length; i++)
         {
-            // Debug.Log("<color=yellow> CUBE COUNT " + i + ": " + cubeCount[i] + "</color>");
+            Debug.Log("<color=yellow> CUBE COUNT " + i + ": " + cubeCount[i] + "</color>");
             totalCount += cubeCount[i];
         }
         Debug.Log("<color=yellow> TOTAL CUBE COUNT: " + totalCount + "</color>");
@@ -144,9 +151,9 @@ public class TerrainGenerator3D : MonoBehaviour
                     float noiseValue = GetPerlinValue3D(x, y, z);
 
                     if (roundFilter) noiseValue = ApplyRound3DNoiseFilter(new int3(x, y, z), noiseValue);
-                    
+                    noiseValue = 1f;
                     noise3DArray[x, y, z] = noiseValue;
-                    if (noiseValue > threshold) tempAvailablePositionHashSet3D.Add(new int3(x, y, z));
+                    if (noiseValue > threshold) tempPositionHashSet.Add(new int3(x, y, z));
                     
                     finalPrefabIndex3DArray[x, y, z] = -1;
                 }
@@ -229,18 +236,21 @@ public class TerrainGenerator3D : MonoBehaviour
 
         // Shuffle tempAvailablePositionList
         // Utils.StartTimer();
-        List<int3> tempListToShuffle = tempAvailablePositionHashSet3D.ToList();
-        tempAvailablePositionHashSet3D = Utils.ShuffleListToHashSet(ref tempListToShuffle);
+        // List<int3> tempListToShuffle = tempAvailablePositionHashSet3D.ToList();
+        // tempAvailablePositionHashSet3D = Utils.ShuffleListToHashSet(ref tempListToShuffle);
+        List<int3> tempListToShuffle = tempPositionHashSet.ToList();
+        Utils.ShuffleListToHashSet(ref tempListToShuffle, ref tempPositionHashSetArray);
         // Utils.EndTimer("Shuffle", "red");
 
         while (currentCubePrefabIndex >= 0)
         {
+            if (currentCubePrefabIndex == 0 && fillNone) return;
             // Copy hashset in preparation for the next round
-            if (currentCubePrefabIndex > 0) nextTempAvailablePositionHashSet3D = new HashSet<int3>(tempAvailablePositionHashSet3D);
+            // if (currentCubePrefabIndex > 0) tempPositionHashSetArray[tempPositionHashSetArray.Length - 1] = new HashSet<int3>(tempAvailablePositionHashSet3D);
             
-            while (tempAvailablePositionHashSet3D.Count > 0)
+            while (tempPositionHashSetArray[currentCubePrefabIndex].Count > 0)
             {
-                int3 pickedSpawnPosition = tempAvailablePositionHashSet3D.ElementAt(0);
+                int3 pickedSpawnPosition = tempPositionHashSetArray[currentCubePrefabIndex].ElementAt(0);
 
                 cubeCount[currentCubePrefabIndex]++;
                 finalPrefabIndex3DArray[pickedSpawnPosition.x, pickedSpawnPosition.y, pickedSpawnPosition.z] = currentCubePrefabIndex;
@@ -248,7 +258,7 @@ public class TerrainGenerator3D : MonoBehaviour
                 RemoveSurroundingCubePosition3D(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
             }
 
-            tempAvailablePositionHashSet3D = nextTempAvailablePositionHashSet3D;
+            // tempAvailablePositionHashSet3D = nextTempAvailablePositionHashSet3D;
             currentCubePrefabIndex--;
         }
 
@@ -264,32 +274,48 @@ public class TerrainGenerator3D : MonoBehaviour
 
     private void RemoveSurroundingCubePosition3D([ReadOnly] ref int3 pickedPos, [ReadOnly] ref int index)
     {
-        int diameter = cubeSize[index] - 1;
-        int xMinD = pickedPos.x - diameter;
-        int xMaxD = pickedPos.x + diameter;
-        int yMinD = pickedPos.y - diameter;
-        int yMaxD = pickedPos.y + diameter;
-        int zMinD = pickedPos.z - diameter;
-        int zMaxD = pickedPos.z + diameter;
+        int outerRadius = 0;
+        if (fillMaxHoles)
+            outerRadius = index != 0 ? cubeSize[index] - 1 : cubeSize[index] / 2;
+        else
+            outerRadius = cubeSize[index] - 1;
 
-        int xMinH = xMinD + diameter / 2;
-        int xMaxH = xMaxD - diameter / 2;
-        int yMinH = yMinD + diameter / 2;
-        int yMaxH = yMaxD - diameter / 2;
-        int zMinH = zMinD + diameter / 2;
-        int zMaxH = zMaxD - diameter / 2;
+        int xMinO = pickedPos.x - outerRadius; // CLAMP THESE
+        int xMaxO = pickedPos.x + outerRadius;
+        int yMinO = pickedPos.y - outerRadius;
+        int yMaxO = pickedPos.y + outerRadius;
+        int zMinO = pickedPos.z - outerRadius;
+        int zMaxO = pickedPos.z + outerRadius;
 
-        for (int x = xMinD; x <= xMaxD ; x++)
-            for (int y = yMinD; y <= yMaxD ; y++)
-                for (int z = zMinD; z <= zMaxD ; z++)
+        for (int x = xMinO; x <= xMaxO ; x++)
+            for (int y = yMinO; y <= yMaxO ; y++)
+                for (int z = zMinO; z <= zMaxO ; z++)
                 {
                     if (x < 0 || y < 0 || z < 0 || x >= terrainSize.x || y >= terrainSize.y || z >= terrainSize.z) continue;
 
-                    tempAvailablePositionHashSet3D.Remove(new int3(x, y, z));
+                    tempPositionHashSetArray[index].Remove(new int3(x, y, z));
 
-                    if (index > 0 && x >= xMinH && x <= xMaxH && y >= yMinH && y <= yMaxH && z >= zMinH && z <= zMaxH)
+                    if (index == 0) continue;
+
+                    for (int subIndex = 0; subIndex < index; subIndex++)
                     {
-                        nextTempAvailablePositionHashSet3D.Remove(new int3(x, y, z));
+                        int innerRadius = 0;
+                        // if (fillMaxHoles)
+                            innerRadius = subIndex != 0 ? cubeSize[index] / 2 + cubeSize[subIndex] / 2 - 1 : cubeSize[index] / 2;
+                        // else
+                            // innerRadius = cubeSize[index] / 2 + cubeSize[subIndex] / 2 - 1;
+
+                        int xMinI = pickedPos.x - innerRadius;
+                        int xMaxI = pickedPos.x + innerRadius;
+                        int yMinI = pickedPos.y - innerRadius;
+                        int yMaxI = pickedPos.y + innerRadius;
+                        int zMinI = pickedPos.z - innerRadius;
+                        int zMaxI = pickedPos.z + innerRadius;
+
+                        if (x >= xMinI && x <= xMaxI && y >= yMinI && y <= yMaxI && z >= zMinI && z <= zMaxI)
+                        {
+                            tempPositionHashSetArray[subIndex].Remove(new int3(x, y, z));
+                        }
                     }
                 }
     }
