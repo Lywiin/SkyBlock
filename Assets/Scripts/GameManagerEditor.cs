@@ -8,21 +8,35 @@ using UnityEditor;
 [CustomEditor(typeof(GameManager))]
 public class GameManagerEditor : Editor
 {
+    private TerrainGenerator2D terrainGenerator2D;
+    private TerrainGenerator3D terrainGenerator3D;
+
+    private void Awake()
+    {
+        terrainGenerator2D = (TerrainGenerator2D)FindObjectOfType(typeof(TerrainGenerator2D));
+        terrainGenerator3D = (TerrainGenerator3D)FindObjectOfType(typeof(TerrainGenerator3D));
+    }
+
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
 
         GUILayout.Space(10);
-        if (GUILayout.Button("Generate Terrain") && Application.isPlaying)
+        if (GUILayout.Button("Generate 2D Terrain") && Application.isPlaying)
         {   
-            GameManager.Instance.GenerateTerrain();
+            terrainGenerator2D.GenerateTerrain2D();
         }
 
         GUILayout.Space(5);
-        if (GUILayout.Button("Generate Random Terrain") && Application.isPlaying)
+        if (GUILayout.Button("Generate 3D Terrain") && Application.isPlaying)
+        {   
+            terrainGenerator3D.GenerateTerrain3D();
+        }
+
+        GUILayout.Space(10);
+        if (GUILayout.Button("Refresh Seed") && Application.isPlaying)
         {   
             GameManager.Instance.RefreshSeed();
-            GameManager.Instance.GenerateTerrain();
         }
         
         SceneView.RepaintAll();

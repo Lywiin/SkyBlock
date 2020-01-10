@@ -256,6 +256,8 @@ GameObject:
   m_Component:
   - component: {fileID: 558191185}
   - component: {fileID: 558191184}
+  - component: {fileID: 558191187}
+  - component: {fileID: 558191186}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -277,68 +279,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   text: {fileID: 677131977}
   noiseImage: {fileID: 949739650}
-  cubePrefabArray:
-  - {fileID: 7803720748287341991, guid: 12d334a2fadaf5e49b93f607bfd5e8d2, type: 3}
-  - {fileID: 7803720748287341991, guid: c1808bb5c3bb68c4995cc40beaaf61d1, type: 3}
-  - {fileID: 7803720748287341991, guid: 40eaaee561dc3064a8f8b3abc056862c, type: 3}
-  - {fileID: 7803720748287341991, guid: 46ce36a5e0d00d44fa91788dd9ee3835, type: 3}
-  terrainSize:
-    x: 100
-    y: 100
-    z: 100
-  terrainHeight: 1
-  noiseScale:
-    x: 1
-    y: 1
-    z: 1
-  waveHeight: 2
-  waveSpeed: 1
-  terrasseHeight: 2
-  terrain2D: 0
-  terrain3D: 1
-  roundFilter: 1
-  centerPoint:
-    x: 50
-    y: 99
-    z: 50
-  roundFilterCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 0.50416565
-      value: 0.496225
-      inSlope: -1.4418715
-      outSlope: -1.4418715
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0.15966555
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  thresholdFilterToggle: 0
-  threshold: 0.3
   seed: 1
-  rng:
-    state: 195855869
 --- !u!4 &558191185
 Transform:
   m_ObjectHideFlags: 0
@@ -353,6 +294,131 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &558191186
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 558191183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f17870f9580f794cb2f3fd9160cc109, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cubePrefabArray:
+  - {fileID: 5017715055655539760, guid: 62225af2f4bb24e4bb4bfae5d01d873c, type: 3}
+  - {fileID: 3522466454960303378, guid: 913ca1bb2397cb2478d2cbd1602b7a54, type: 3}
+  - {fileID: 7803720748287341991, guid: 29e897f45e28b2e43ad6b60c2b15c928, type: 3}
+  terrainSize:
+    x: 200
+    y: 200
+  terrainHeight: 50
+  noiseScale:
+    x: 5
+    y: 5
+  waveHeight: 2
+  waveSpeed: 0.5
+  terrasseHeight: 1
+  roundFilter: 1
+  roundFilterCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.5
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  thresholdFilterToggle: 1
+  threshold: 0.2
+--- !u!114 &558191187
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 558191183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdbe0f63b6ee3a9408bebb27510849ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cubePrefabArray:
+  - {fileID: 7803720748287341991, guid: 12d334a2fadaf5e49b93f607bfd5e8d2, type: 3}
+  - {fileID: 7803720748287341991, guid: c1808bb5c3bb68c4995cc40beaaf61d1, type: 3}
+  - {fileID: 7803720748287341991, guid: 40eaaee561dc3064a8f8b3abc056862c, type: 3}
+  - {fileID: 7803720748287341991, guid: 46ce36a5e0d00d44fa91788dd9ee3835, type: 3}
+  terrainSize:
+    x: 70
+    y: 60
+    z: 70
+  noiseScale:
+    x: 1
+    y: 1
+    z: 1
+  waveHeight: 2
+  waveSpeed: 1
+  roundFilter: 1
+  roundFilterCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.75
+      value: 0.85
+      inSlope: -0.5557464
+      outSlope: -0.5557464
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.54999995
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  thresholdFilterToggle: 1
+  threshold: 0.43
 --- !u!1 &677131975
 GameObject:
   m_ObjectHideFlags: 0
@@ -744,8 +810,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1350654097}
-  m_LocalRotation: {x: 0.17897461, y: 0.30430785, z: -0.0583251, w: 0.9337896}
-  m_LocalPosition: {x: 3, y: 129.7, z: -10}
+  m_LocalRotation: {x: 0.15486188, y: 0.39283302, z: -0.06729704, w: 0.9039752}
+  m_LocalPosition: {x: -133.06061, y: 98.96623, z: -125.877785}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
