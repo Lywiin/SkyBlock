@@ -64,6 +64,38 @@ public class TerrainGenerator2D : MonoBehaviour
 
     /************************ TERRAIN ************************/
 
+    public void GenerateTerrain2D() 
+    {
+        Debug.Log("<color=red> ========= GENERATE TERRAIN 2D =========</color>");
+
+        Initialize2D();
+        DestroyTerrain2D();
+
+        Utils.StartTimer();
+        Generate2DNoise();
+        float time1 = Utils.EndTimer("Generate2DNoise");
+
+        Utils.StartTimer();
+        ScaleCubes2D();
+        float time2 = Utils.EndTimer("ScaleCubes");
+
+        Utils.StartTimer();
+        InstantiateCubes2D();
+        float time3 = Utils.EndTimer("InstantiateCubes");
+
+        float totalTime = time1 + time2 + time3;
+        Debug.Log("<color=yellow> TIME ELAPSED TOTAL: " + totalTime.ToString("F8") + "s</color>");
+        GameManager.Instance.text.text = totalTime.ToString();
+
+        int totalCount = 0;
+        for (int i = 0; i < cubeCount.Length; i++)
+        {
+            Debug.Log("<color=yellow> CUBE COUNT " + i + ": " + cubeCount[i] + "</color>");
+            totalCount += cubeCount[i];
+        }
+        Debug.Log("<color=yellow> TOTAL CUBE COUNT: " + totalCount + "</color>");
+    }
+
     // Allocation of all variable changeable at each generation
     private void Initialize2D()
     {
@@ -96,38 +128,6 @@ public class TerrainGenerator2D : MonoBehaviour
         
         for (int i = 0; i < cubeCount.Length; i++)
             cubeCount[i] = 0;
-    }
-
-    public void GenerateTerrain2D() 
-    {
-        Debug.Log("<color=red> ========= GENERATE TERRAIN 2D =========</color>");
-
-        Initialize2D();
-        DestroyTerrain2D();
-
-        Utils.StartTimer();
-        Generate2DNoise();
-        float time1 = Utils.EndTimer("Generate2DNoise");
-
-        Utils.StartTimer();
-        ScaleCubes2D();
-        float time2 = Utils.EndTimer("ScaleCubes");
-
-        Utils.StartTimer();
-        InstantiateCubes2D();
-        float time3 = Utils.EndTimer("InstantiateCubes");
-
-        float totalTime = time1 + time2 + time3;
-        Debug.Log("<color=yellow> TIME ELAPSED TOTAL: " + totalTime.ToString("F8") + "s</color>");
-        GameManager.Instance.text.text = totalTime.ToString();
-
-        int totalCount = 0;
-        for (int i = 0; i < cubeCount.Length; i++)
-        {
-            Debug.Log("<color=yellow> CUBE COUNT " + i + ": " + cubeCount[i] + "</color>");
-            totalCount += cubeCount[i];
-        }
-        Debug.Log("<color=yellow> TOTAL CUBE COUNT: " + totalCount + "</color>");
     }
 
 

@@ -52,25 +52,17 @@ public static class Utils
         }
     }
 
-    private static float startTime;
-    private static float totalTime;
+    private static Stack<float> startTime = new Stack<float>();
 
     public static void StartTimer()
     {
-        startTime = Time.realtimeSinceStartup;
+        startTime.Push(Time.realtimeSinceStartup);
     }
 
     public static float EndTimer(string name = "", string color = "yellow")
     {
-        float time = totalTime = Time.realtimeSinceStartup - startTime;
+        float totalTime = Time.realtimeSinceStartup - (float)startTime.Pop();
         Debug.Log("<color=" + color + "> ========= TIME ELAPSED " + name + ": " + (totalTime).ToString("F8") + "s</color>");
-        totalTime = 0f;
-        return time;
+        return totalTime;
     }
-
-    public static void EndTimerStep(string name = "")
-    {
-        totalTime += Time.realtimeSinceStartup - startTime;
-    }
-
 }

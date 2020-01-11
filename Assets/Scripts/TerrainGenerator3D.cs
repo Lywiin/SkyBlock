@@ -19,6 +19,7 @@ public class TerrainGenerator3D : MonoBehaviour
     public float waveSpeed;
     public bool fillNone;
     public bool fillMaxHoles;
+    public int penetration;
 
     [Header("Filters")]
     public bool roundFilter;
@@ -68,6 +69,38 @@ public class TerrainGenerator3D : MonoBehaviour
 
     /************************ TERRAIN ************************/
 
+    public void GenerateTerrain3D()
+    {
+        Debug.Log("<color=red> ========= GENERATE TERRAIN 3D =========</color>");
+
+        Initialize3D();
+        DestroyTerrain3D();
+
+        Utils.StartTimer();
+        Generate3DNoise();
+        float time1 = Utils.EndTimer("Generate3DNoise");
+
+        Utils.StartTimer();
+        ScaleCubes3D();
+        float time2 = Utils.EndTimer("ScaleCubes3D");
+
+        Utils.StartTimer();
+        InstantiateCubes3D();
+        float time3 = Utils.EndTimer("InstantiateCubes3D");
+
+        float totalTime = time1 + time2 + time3;
+        Debug.Log("<color=yellow> TIME ELAPSED TOTAL: " + totalTime.ToString("F8") + "s</color>");
+        GameManager.Instance.text.text = totalTime.ToString();
+
+        int totalCount = 0;
+        for (int i = 0; i < cubeCount.Length; i++)
+        {
+            // Debug.Log("<color=yellow> CUBE COUNT " + i + ": " + cubeCount[i] + "</color>");
+            totalCount += cubeCount[i];
+        }
+        Debug.Log("<color=yellow> TOTAL CUBE COUNT: " + totalCount + "</color>");
+    }
+
     private void Initialize3D()
     {
         manager = GameManager.Instance.Manager;
@@ -105,38 +138,6 @@ public class TerrainGenerator3D : MonoBehaviour
 
         tempPositionHashSet.Clear();
         // nextTempAvailablePositionHashSet3D.Clear();
-    }
-
-    public void GenerateTerrain3D()
-    {
-        Debug.Log("<color=red> ========= GENERATE TERRAIN 2D =========</color>");
-
-        Initialize3D();
-        DestroyTerrain3D();
-
-        Utils.StartTimer();
-        Generate3DNoise();
-        float time1 = Utils.EndTimer("Generate3DNoise");
-
-        Utils.StartTimer();
-        ScaleCubes3D();
-        float time2 = Utils.EndTimer("ScaleCubes3D");
-
-        Utils.StartTimer();
-        InstantiateCubes3D();
-        float time3 = Utils.EndTimer("InstantiateCubes3D");
-
-        float totalTime = time1 + time2 + time3;
-        Debug.Log("<color=yellow> TIME ELAPSED TOTAL: " + totalTime.ToString("F8") + "s</color>");
-        GameManager.Instance.text.text = totalTime.ToString();
-
-        int totalCount = 0;
-        for (int i = 0; i < cubeCount.Length; i++)
-        {
-            Debug.Log("<color=yellow> CUBE COUNT " + i + ": " + cubeCount[i] + "</color>");
-            totalCount += cubeCount[i];
-        }
-        Debug.Log("<color=yellow> TOTAL CUBE COUNT: " + totalCount + "</color>");
     }
 
 
@@ -235,32 +236,37 @@ public class TerrainGenerator3D : MonoBehaviour
         int currentCubePrefabIndex = cubePrefabArray.Length - 1;
 
         // Shuffle tempAvailablePositionList
-        // Utils.StartTimer();
+        Utils.StartTimer();
         // List<int3> tempListToShuffle = tempAvailablePositionHashSet3D.ToList();
         // tempAvailablePositionHashSet3D = Utils.ShuffleListToHashSet(ref tempListToShuffle);
         List<int3> tempListToShuffle = tempPositionHashSet.ToList();
         Utils.ShuffleListToHashSet(ref tempListToShuffle, ref tempPositionHashSetArray);
-        // Utils.EndTimer("Shuffle", "red");
+        Utils.EndTimer("Shuffle", "orange");
 
+        Utils.StartTimer();
         while (currentCubePrefabIndex >= 0)
         {
-            if (currentCubePrefabIndex == 0 && fillNone) return;
-            // Copy hashset in preparation for the next round
-            // if (currentCubePrefabIndex > 0) tempPositionHashSetArray[tempPositionHashSetArray.Length - 1] = new HashSet<int3>(tempAvailablePositionHashSet3D);
-            
-            while (tempPositionHashSetArray[currentCubePrefabIndex].Count > 0)
+            if (!fillNone || currentCubePrefabIndex != 0)
             {
-                int3 pickedSpawnPosition = tempPositionHashSetArray[currentCubePrefabIndex].ElementAt(0);
+                // Copy hashset in preparation for the next round
+                // if (currentCubePrefabIndex > 0) tempPositionHashSetArray[tempPositionHashSetArray.Length - 1] = new HashSet<int3>(tempAvailablePositionHashSet3D);
+                
+                while (tempPositionHashSetArray[currentCubePrefabIndex].Count > 0)
+                {
+                    int3 pickedSpawnPosition = tempPositionHashSetArray[currentCubePrefabIndex].ElementAt(0);
 
-                cubeCount[currentCubePrefabIndex]++;
-                finalPrefabIndex3DArray[pickedSpawnPosition.x, pickedSpawnPosition.y, pickedSpawnPosition.z] = currentCubePrefabIndex;
+                    cubeCount[currentCubePrefabIndex]++;
+                    finalPrefabIndex3DArray[pickedSpawnPosition.x, pickedSpawnPosition.y, pickedSpawnPosition.z] = currentCubePrefabIndex;
 
-                RemoveSurroundingCubePosition3D(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
+                    RemoveSurroundingCubePosition3D(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
+                }
+
+                // tempAvailablePositionHashSet3D = nextTempAvailablePositionHashSet3D;
             }
 
-            // tempAvailablePositionHashSet3D = nextTempAvailablePositionHashSet3D;
             currentCubePrefabIndex--;
         }
+        Utils.EndTimer("While", "orange");
 
 
         // cubeCount[0] = tempAvailablePositionHashSet3D.Count;
@@ -279,6 +285,7 @@ public class TerrainGenerator3D : MonoBehaviour
             outerRadius = index != 0 ? cubeSize[index] - 1 : cubeSize[index] / 2;
         else
             outerRadius = cubeSize[index] - 1;
+        outerRadius = math.max(outerRadius - penetration, 0);
 
         int xMinO = pickedPos.x - outerRadius; // CLAMP THESE
         int xMaxO = pickedPos.x + outerRadius;
@@ -302,6 +309,7 @@ public class TerrainGenerator3D : MonoBehaviour
                         int innerRadius = 0;
                         // if (fillMaxHoles)
                             innerRadius = subIndex != 0 ? cubeSize[index] / 2 + cubeSize[subIndex] / 2 - 1 : cubeSize[index] / 2;
+                            innerRadius = math.max(innerRadius - penetration, 0);
                         // else
                             // innerRadius = cubeSize[index] / 2 + cubeSize[subIndex] / 2 - 1;
 

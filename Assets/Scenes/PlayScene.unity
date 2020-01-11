@@ -374,15 +374,18 @@ MonoBehaviour:
   - {fileID: 7803720748287341991, guid: 40eaaee561dc3064a8f8b3abc056862c, type: 3}
   - {fileID: 7803720748287341991, guid: 46ce36a5e0d00d44fa91788dd9ee3835, type: 3}
   terrainSize:
-    x: 30
-    y: 30
-    z: 30
+    x: 50
+    y: 50
+    z: 50
   noiseScale:
     x: 1
     y: 1
     z: 1
   waveHeight: 2
   waveSpeed: 1
+  fillNone: 1
+  fillMaxHoles: 0
+  penetration: 4
   roundFilter: 1
   roundFilterCurve:
     serializedVersion: 2
