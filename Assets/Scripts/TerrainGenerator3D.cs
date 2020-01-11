@@ -152,9 +152,10 @@ public class TerrainGenerator3D : MonoBehaviour
                     float noiseValue = GetPerlinValue3D(x, y, z);
 
                     if (roundFilter) noiseValue = ApplyRound3DNoiseFilter(new int3(x, y, z), noiseValue);
-                    noiseValue = 1f;
-                    noise3DArray[x, y, z] = noiseValue;
-                    if (noiseValue > threshold) tempPositionHashSet.Add(new int3(x, y, z));
+
+                    // noise3DArray[x, y, z] = noiseValue;
+
+                    if (noiseValue > threshold) tempPositionHashSetArray[0].Add(new int3(x, y, z));
                     
                     finalPrefabIndex3DArray[x, y, z] = -1;
                 }
@@ -234,14 +235,12 @@ public class TerrainGenerator3D : MonoBehaviour
     private void ScaleCubes3D()
     {
         int currentCubePrefabIndex = cubePrefabArray.Length - 1;
-
-        // Shuffle tempAvailablePositionList
+        
         Utils.StartTimer();
-        // List<int3> tempListToShuffle = tempAvailablePositionHashSet3D.ToList();
-        // tempAvailablePositionHashSet3D = Utils.ShuffleListToHashSet(ref tempListToShuffle);
-        List<int3> tempListToShuffle = tempPositionHashSet.ToList();
-        Utils.ShuffleListToHashSet(ref tempListToShuffle, ref tempPositionHashSetArray);
-        Utils.EndTimer("Shuffle", "orange");
+        tempPositionHashSetArray[0] = new HashSet<int3>(tempPositionHashSetArray[0].Shuffle());
+        for (int i = 1; i < tempPositionHashSetArray.Length; i++)
+                tempPositionHashSetArray[i] = new HashSet<int3>(tempPositionHashSetArray[0]);
+        Utils.EndTimer("Shuffle1", "lime");
 
         Utils.StartTimer();
         while (currentCubePrefabIndex >= 0)
@@ -287,19 +286,17 @@ public class TerrainGenerator3D : MonoBehaviour
             outerRadius = cubeSize[index] - 1;
         outerRadius = math.max(outerRadius - penetration, 0);
 
-        int xMinO = pickedPos.x - outerRadius; // CLAMP THESE
-        int xMaxO = pickedPos.x + outerRadius;
-        int yMinO = pickedPos.y - outerRadius;
-        int yMaxO = pickedPos.y + outerRadius;
-        int zMinO = pickedPos.z - outerRadius;
-        int zMaxO = pickedPos.z + outerRadius;
+        int xMinO = math.max(pickedPos.x - outerRadius, 0);
+        int xMaxO = math.min(pickedPos.x + outerRadius, terrainSize.x - 1);
+        int yMinO = math.max(pickedPos.y - outerRadius, 0);
+        int yMaxO = math.min(pickedPos.y + outerRadius, terrainSize.y - 1);
+        int zMinO = math.max(pickedPos.z - outerRadius, 0);
+        int zMaxO = math.min(pickedPos.z + outerRadius, terrainSize.z - 1);
 
         for (int x = xMinO; x <= xMaxO ; x++)
             for (int y = yMinO; y <= yMaxO ; y++)
                 for (int z = zMinO; z <= zMaxO ; z++)
                 {
-                    if (x < 0 || y < 0 || z < 0 || x >= terrainSize.x || y >= terrainSize.y || z >= terrainSize.z) continue;
-
                     tempPositionHashSetArray[index].Remove(new int3(x, y, z));
 
                     if (index == 0) continue;

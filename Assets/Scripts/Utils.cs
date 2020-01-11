@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
+using System.Linq;
 
 public static class Utils
 {
@@ -36,21 +37,22 @@ public static class Utils
         return suffledHashset;
     }
 
-    public static void ShuffleListToHashSet<T>(ref List<T> inputList, ref HashSet<T>[] outHashsetArray)
+    // Fished-Yates shuffle
+    public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)
     {
         Unity.Mathematics.Random rng = GameManager.Instance.Rng;
 
-        int randomIndex = 0;
-        while (inputList.Count > 0)
+        List<T> buffer = source.ToList();
+        for (int i = 0; i < buffer.Count; i++)
         {
-            randomIndex = rng.NextInt(0, inputList.Count);
+            int j = rng.NextInt(i, buffer.Count);
+            yield return buffer[j];
 
-            for (int i = 0; i < outHashsetArray.Length; i++)
-                outHashsetArray[i].Add(inputList[randomIndex]);
-
-            inputList.RemoveAt(randomIndex);
+            buffer[j] = buffer[i];
         }
     }
+
+
 
     private static Stack<float> startTime = new Stack<float>();
 
