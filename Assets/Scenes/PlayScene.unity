@@ -374,9 +374,9 @@ MonoBehaviour:
   - {fileID: 7803720748287341991, guid: 40eaaee561dc3064a8f8b3abc056862c, type: 3}
   - {fileID: 7803720748287341991, guid: 46ce36a5e0d00d44fa91788dd9ee3835, type: 3}
   terrainSize:
-    x: 50
-    y: 50
-    z: 50
+    x: 200
+    y: 100
+    z: 200
   noiseScale:
     x: 1
     y: 1

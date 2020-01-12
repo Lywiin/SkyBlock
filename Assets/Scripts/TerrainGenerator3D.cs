@@ -145,20 +145,33 @@ public class TerrainGenerator3D : MonoBehaviour
 
     private void Generate3DNoise()
     {
+        float endTime1 = 0f;
+        float endTime2 = 0f;
+        float endTime3 = 0f;
+        float startTime = 0f;
         for (int x = 0; x < terrainSize.x ; x++)
             for (int y = 0; y < terrainSize.y ; y++)
                 for (int z = 0; z < terrainSize.z ; z++)
                 {
+                    startTime = Time.realtimeSinceStartup;
                     float noiseValue = GetPerlinValue3D(x, y, z);
+                    endTime1 += Time.realtimeSinceStartup - startTime;
 
+                    // if (noiseValue > threshold)
+
+                    startTime = Time.realtimeSinceStartup;
                     if (roundFilter) noiseValue = ApplyRound3DNoiseFilter(new int3(x, y, z), noiseValue);
+                    endTime2 += Time.realtimeSinceStartup - startTime;
 
                     // noise3DArray[x, y, z] = noiseValue;
 
+                    startTime = Time.realtimeSinceStartup;
                     if (noiseValue > threshold) tempPositionHashSetArray[0].Add(new int3(x, y, z));
-                    
-                    finalPrefabIndex3DArray[x, y, z] = -1;
+                    endTime3 += Time.realtimeSinceStartup - startTime;
                 }
+        Debug.Log("<color=limegreen> ========= TIME ELAPSED GetPerlinValue3D: " + (endTime1).ToString("F8") + "s</color>");
+        Debug.Log("<color=limegreen> ========= TIME ELAPSED ApplyRound3DNoiseFilter: " + (endTime2).ToString("F8") + "s</color>");
+        Debug.Log("<color=limegreen> ========= TIME ELAPSED Threshold: " + (endTime3).ToString("F8") + "s</color>");
     }
     
     private float GetPerlinValue3D(float x, float y, float z)
@@ -208,8 +221,8 @@ public class TerrainGenerator3D : MonoBehaviour
             for (int y = 0; y < terrainSize.y ; y++)
                 for (int z = 0; z < terrainSize.z ; z++)
                 {
-                    if (finalPrefabIndex3DArray[x, y, z] == -1) continue;
-                    int cubePrefabIndex = finalPrefabIndex3DArray[x, y, z];
+                    if (finalPrefabIndex3DArray[x, y, z] == 0) continue;
+                    int cubePrefabIndex = finalPrefabIndex3DArray[x, y, z] - 1;
 
                     Entity entity = cubeEntitiesArrayArray[cubePrefabIndex][indexes[cubePrefabIndex]];
                     newPos = new float3(x, y, z) + rootPos;
@@ -235,14 +248,14 @@ public class TerrainGenerator3D : MonoBehaviour
     private void ScaleCubes3D()
     {
         int currentCubePrefabIndex = cubePrefabArray.Length - 1;
-        
-        Utils.StartTimer();
+
+        // Utils.StartTimer();
         tempPositionHashSetArray[0] = new HashSet<int3>(tempPositionHashSetArray[0].Shuffle());
         for (int i = 1; i < tempPositionHashSetArray.Length; i++)
                 tempPositionHashSetArray[i] = new HashSet<int3>(tempPositionHashSetArray[0]);
-        Utils.EndTimer("Shuffle1", "lime");
+        // Utils.EndTimer("Shuffle1", "lime");
 
-        Utils.StartTimer();
+        // Utils.StartTimer();
         while (currentCubePrefabIndex >= 0)
         {
             if (!fillNone || currentCubePrefabIndex != 0)
@@ -255,7 +268,7 @@ public class TerrainGenerator3D : MonoBehaviour
                     int3 pickedSpawnPosition = tempPositionHashSetArray[currentCubePrefabIndex].ElementAt(0);
 
                     cubeCount[currentCubePrefabIndex]++;
-                    finalPrefabIndex3DArray[pickedSpawnPosition.x, pickedSpawnPosition.y, pickedSpawnPosition.z] = currentCubePrefabIndex;
+                    finalPrefabIndex3DArray[pickedSpawnPosition.x, pickedSpawnPosition.y, pickedSpawnPosition.z] = currentCubePrefabIndex + 1;
 
                     RemoveSurroundingCubePosition3D(ref pickedSpawnPosition, ref currentCubePrefabIndex); // Remove 3x3 square for index == 1
                 }
@@ -265,7 +278,7 @@ public class TerrainGenerator3D : MonoBehaviour
 
             currentCubePrefabIndex--;
         }
-        Utils.EndTimer("While", "orange");
+        // Utils.EndTimer("While", "orange");
 
 
         // cubeCount[0] = tempAvailablePositionHashSet3D.Count;
