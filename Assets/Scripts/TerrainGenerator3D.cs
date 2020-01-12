@@ -4,6 +4,7 @@ using System.Linq;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Collections;
+using Unity.Jobs;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -35,6 +36,8 @@ public class TerrainGenerator3D : MonoBehaviour
     // Instantiate cubes
     private Entity[] cubePrefabEntityArray;
     private float[,,] noise3DArray;
+    private NativeArray<float> noiseArray;
+    private NativeMultiHashMap<int3, float> positionHashSet;
     private int[,,] finalPrefabIndex3DArray;
     private HashSet<int3>[] tempPositionHashSetArray;
     private HashSet<int3> tempPositionHashSet;
@@ -143,54 +146,68 @@ public class TerrainGenerator3D : MonoBehaviour
 
     /************************ NOISE ************************/
 
+    private void Generate3DNoiseJobParallel(int arraySize)
+    {
+        NoiseGeneratorJobParallel noiseGeneratorJobParallel = new NoiseGeneratorJobParallel
+        {
+            terrainSize = terrainSize,
+            terrainScale = noiseScale,
+            terrainOffset = offset, 
+            noiseArray = noiseArray
+        };
+
+        JobHandle jobHandle = noiseGeneratorJobParallel.Schedule(arraySize, terrainSize.x);
+        jobHandle.Complete();
+    }
+
+    private void NoiseThresholdParallelJobParallel(int arraySize)
+    {
+        NoiseThresholdJobParallel noiseThresholdJobParallel = new NoiseThresholdJobParallel
+        {
+            threshold = threshold,
+            terrainSize = terrainSize,
+            noiseArray = noiseArray,
+            positionHashSet = positionHashSet.AsParallelWriter()
+        };
+
+        JobHandle jobHandle = noiseThresholdJobParallel.Schedule(arraySize, terrainSize.x);
+        jobHandle.Complete();
+    }
+
     private void Generate3DNoise()
     {
-        float endTime1 = 0f;
-        float endTime2 = 0f;
-        float endTime3 = 0f;
-        float startTime = 0f;
-        for (int x = 0; x < terrainSize.x ; x++)
-            for (int y = 0; y < terrainSize.y ; y++)
-                for (int z = 0; z < terrainSize.z ; z++)
-                {
-                    startTime = Time.realtimeSinceStartup;
-                    float noiseValue = GetPerlinValue3D(x, y, z);
-                    endTime1 += Time.realtimeSinceStartup - startTime;
+        int arraySize = terrainSize.x * terrainSize.y * terrainSize.z;
+        noiseArray = new NativeArray<float>(arraySize, Allocator.TempJob);
+        Generate3DNoiseJobParallel(arraySize);
 
-                    // if (noiseValue > threshold)
+        positionHashSet = new NativeMultiHashMap<int3, float>(arraySize, Allocator.TempJob);
+        NoiseThresholdParallelJobParallel(arraySize);
 
-                    startTime = Time.realtimeSinceStartup;
-                    if (roundFilter) noiseValue = ApplyRound3DNoiseFilter(new int3(x, y, z), noiseValue);
-                    endTime2 += Time.realtimeSinceStartup - startTime;
+        NativeArray<int3> hashSetKeys = positionHashSet.GetKeyArray(Allocator.TempJob);
+        tempPositionHashSetArray[0] = new HashSet<int3>(hashSetKeys);
 
-                    // noise3DArray[x, y, z] = noiseValue;
-
-                    startTime = Time.realtimeSinceStartup;
-                    if (noiseValue > threshold) tempPositionHashSetArray[0].Add(new int3(x, y, z));
-                    endTime3 += Time.realtimeSinceStartup - startTime;
-                }
-        Debug.Log("<color=limegreen> ========= TIME ELAPSED GetPerlinValue3D: " + (endTime1).ToString("F8") + "s</color>");
-        Debug.Log("<color=limegreen> ========= TIME ELAPSED ApplyRound3DNoiseFilter: " + (endTime2).ToString("F8") + "s</color>");
-        Debug.Log("<color=limegreen> ========= TIME ELAPSED Threshold: " + (endTime3).ToString("F8") + "s</color>");
+        noiseArray.Dispose();
+        positionHashSet.Dispose();
+        hashSetKeys.Dispose();
     }
     
-    private float GetPerlinValue3D(float x, float y, float z)
-    {
-        float xCoord = x / terrainSize.x * noiseScale.x + offset.x;
-        float yCoord = y / terrainSize.y * noiseScale.y + offset.y;
-        float zCoord = z / terrainSize.z * noiseScale.z + offset.z;
+    // private float GetPerlinValue3D(float x, float y, float z)
+    // {
+    //     float xCoord = x / terrainSize.x * noiseScale.x + offset.x;
+    //     float yCoord = y / terrainSize.y * noiseScale.y + offset.y;
+    //     float zCoord = z / terrainSize.z * noiseScale.z + offset.z;
 
-        float xy = Mathf.PerlinNoise(xCoord, yCoord);
-        float yz = Mathf.PerlinNoise(yCoord, zCoord);
-        float xz = Mathf.PerlinNoise(xCoord, zCoord);
+    //     float xy = Mathf.PerlinNoise(xCoord, yCoord);
+    //     float yz = Mathf.PerlinNoise(yCoord, zCoord);
+    //     float xz = Mathf.PerlinNoise(xCoord, zCoord);
         
-        float yx = Mathf.PerlinNoise(yCoord, xCoord);
-        float zy = Mathf.PerlinNoise(zCoord, yCoord);
-        float zx = Mathf.PerlinNoise(zCoord, xCoord);
+    //     float yx = Mathf.PerlinNoise(yCoord, xCoord);
+    //     float zy = Mathf.PerlinNoise(zCoord, yCoord);
+    //     float zx = Mathf.PerlinNoise(zCoord, xCoord);
 
-        float xyz = xy + yz + xz + yx + zy + zx;
-        return xyz / 6f;
-    }
+    //     float xyz = xy + yz + xz + yx + zy + zx;
+    //     return xyz / 6f;
+    // }
 
     private float ApplyRound3DNoiseFilter(int3 point, float value)
     {
