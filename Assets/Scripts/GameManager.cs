@@ -73,8 +73,6 @@ public class GameManager : MonoBehaviour
     public void RefreshSeed()
     {
         seed = rng.NextUInt(uint.MinValue, uint.MaxValue);
-
-        InitSeed();
     }
 
     public void InitSeed()

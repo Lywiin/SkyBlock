@@ -386,7 +386,7 @@ MonoBehaviour:
   fillNone: 1
   fillMaxHoles: 0
   penetration: 4
-  roundFilter: 1
+  roundFilter: 0
   roundFilterCurve:
     serializedVersion: 2
     m_Curve:

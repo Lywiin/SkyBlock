@@ -29,11 +29,45 @@ public struct NoiseGeneratorJobParallel : IJobParallelFor
 }
 
 [BurstCompile]
+public struct NoiseRoundFilterJobParallel : IJobParallelFor
+{
+    [ReadOnly] public int3 terrainSize;
+    [ReadOnly] public float3 centerPos;
+    [ReadOnly] public float maxDistance;
+
+    public NativeArray<float> noiseArray;
+    [ReadOnly] public float arrayMin;
+    [ReadOnly] public float arrayMax;
+
+    public void Execute(int index)
+    {
+        float x = index / (terrainSize.y * terrainSize.z);
+        float y = index / terrainSize.z % terrainSize.y;
+        float z = index % terrainSize.z;
+
+        float3 currentPos = new float3(x, y, z);
+        float distance = math.distance(currentPos, centerPos);
+        float distanceNormalized = distance / maxDistance;
+        // float remapedNoise = math.remap(arrayMin, 0f, arrayMax, 1f, noiseArray[index]);
+        // if (distanceNormalized > 0.5f) {
+            // distanceNormalized = math.unlerp(0.5f, 1f, distanceNormalized);
+            float noiseNormalized = math.unlerp(arrayMin, arrayMax, noiseArray[index]);
+            noiseArray[index] = noiseNormalized * (1 - distanceNormalized);
+            // noiseArray[index] = 0f;
+        // }
+    }
+}
+
+[BurstCompile]
 public struct NoiseThresholdJobParallel : IJobParallelFor
 {
     [ReadOnly] public float threshold;
     [ReadOnly] public int3 terrainSize;
+
     [ReadOnly] public NativeArray<float> noiseArray;
+    [ReadOnly] public float arrayMin;
+    [ReadOnly] public float arrayMax;
+    
     [WriteOnly] public NativeMultiHashMap<int3, float>.ParallelWriter positionHashSet;
 
     public void Execute(int index)
@@ -42,8 +76,9 @@ public struct NoiseThresholdJobParallel : IJobParallelFor
         int y = index / terrainSize.z % terrainSize.y;
         int z = index % terrainSize.z;
 
-        float noise = noiseArray[index];
+        float noiseNormalized = math.unlerp(arrayMin, arrayMax, noiseArray[index]);
+        // float noiseNormalized = noiseArray[index];
 
-        if (noise > threshold) positionHashSet.Add(new int3(x, y, z), noiseArray[index]);
+        if (noiseNormalized > threshold) positionHashSet.Add(new int3(x, y, z), noiseNormalized);
     }
 }

@@ -68,6 +68,8 @@ public class TerrainGenerator2D : MonoBehaviour
     {
         Debug.Log("<color=red> ========= GENERATE TERRAIN 2D =========</color>");
 
+        GameManager.Instance.InitSeed();
+
         Initialize2D();
         DestroyTerrain2D();
 

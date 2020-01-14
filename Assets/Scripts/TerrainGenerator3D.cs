@@ -75,6 +75,7 @@ public class TerrainGenerator3D : MonoBehaviour
     public void GenerateTerrain3D()
     {
         Debug.Log("<color=red> ========= GENERATE TERRAIN 3D =========</color>");
+        GameManager.Instance.InitSeed();
 
         Initialize3D();
         DestroyTerrain3D();
@@ -146,7 +147,7 @@ public class TerrainGenerator3D : MonoBehaviour
 
     /************************ NOISE ************************/
 
-    private void Generate3DNoiseJobParallel(int arraySize)
+    private void StartNoiseGeneratorJob(int arraySize)
     {
         NoiseGeneratorJobParallel noiseGeneratorJobParallel = new NoiseGeneratorJobParallel
         {
@@ -160,13 +161,34 @@ public class TerrainGenerator3D : MonoBehaviour
         jobHandle.Complete();
     }
 
-    private void NoiseThresholdParallelJobParallel(int arraySize)
+    private void StartNoiseRoundFilterJob(int arraySize)
+    {
+        float3 centerPos = new float3(terrainSize.x / 2, terrainSize.y - 1, terrainSize.z / 2);
+        float3 furtherPos = float3.zero;
+
+        NoiseRoundFilterJobParallel noiseRoundFilterJobParallel = new NoiseRoundFilterJobParallel
+        {
+            terrainSize = terrainSize,
+            centerPos = centerPos,
+            maxDistance = math.distance(furtherPos, centerPos),
+            noiseArray = noiseArray,
+            arrayMin = noiseArray.Min(),
+            arrayMax = noiseArray.Max()
+        };
+
+        JobHandle jobHandle = noiseRoundFilterJobParallel.Schedule(arraySize, terrainSize.x);
+        jobHandle.Complete();
+    }
+
+    private void StartNoiseThresholdJob(int arraySize)
     {
         NoiseThresholdJobParallel noiseThresholdJobParallel = new NoiseThresholdJobParallel
         {
             threshold = threshold,
             terrainSize = terrainSize,
             noiseArray = noiseArray,
+            arrayMin = noiseArray.Min(),
+            arrayMax = noiseArray.Max(),
             positionHashSet = positionHashSet.AsParallelWriter()
         };
 
@@ -178,10 +200,15 @@ public class TerrainGenerator3D : MonoBehaviour
     {
         int arraySize = terrainSize.x * terrainSize.y * terrainSize.z;
         noiseArray = new NativeArray<float>(arraySize, Allocator.TempJob);
-        Generate3DNoiseJobParallel(arraySize);
+        StartNoiseGeneratorJob(arraySize);
+
+        if (roundFilter)
+        {
+            StartNoiseRoundFilterJob(arraySize);
+        }
 
         positionHashSet = new NativeMultiHashMap<int3, float>(arraySize, Allocator.TempJob);
-        NoiseThresholdParallelJobParallel(arraySize);
+        StartNoiseThresholdJob(arraySize);
 
         NativeArray<int3> hashSetKeys = positionHashSet.GetKeyArray(Allocator.TempJob);
         tempPositionHashSetArray[0] = new HashSet<int3>(hashSetKeys);
