@@ -147,101 +147,60 @@ public class TerrainGenerator3D : MonoBehaviour
 
     /************************ NOISE ************************/
 
-    private void StartNoiseGeneratorJob(int arraySize)
+    private void StartNoiseGeneratorJob(ref NativeMultiHashMap<int, int3> index2DHashMap)
     {
+        float3 centerPos = new float3(terrainSize.x / 2, terrainSize.y - 1, terrainSize.z / 2);
+        float3 furtherPos = float3.zero;
+        // float3 furtherPos = new float3(terrainSize.x / 2, terrainSize.y - 1, 0);
+        float maxDistance = math.distance(furtherPos, centerPos);
+
         NoiseGeneratorJobParallel noiseGeneratorJobParallel = new NoiseGeneratorJobParallel
         {
             terrainSize = terrainSize,
             terrainScale = noiseScale,
-            terrainOffset = offset, 
-            noiseArray = noiseArray
+            terrainOffset = offset,
+            threshold = threshold,
+            centerPos = centerPos,
+            maxDistance = maxDistance,
+            index2DHashMap = index2DHashMap.AsParallelWriter(),
         };
 
-        JobHandle jobHandle = noiseGeneratorJobParallel.Schedule(arraySize, terrainSize.x);
+        JobHandle jobHandle = noiseGeneratorJobParallel.Schedule(terrainSize.x * terrainSize.y * terrainSize.z, terrainSize.x);
         jobHandle.Complete();
     }
 
-    private void StartNoiseRoundFilterJob(int arraySize)
+    private void StartNoiseMergeJob(ref NativeMultiHashMap<int, int3> index2DHashMap, ref NativeHashMap<int3, bool> positionHashSet)
     {
         float3 centerPos = new float3(terrainSize.x / 2, terrainSize.y - 1, terrainSize.z / 2);
         float3 furtherPos = float3.zero;
 
-        NoiseRoundFilterJobParallel noiseRoundFilterJobParallel = new NoiseRoundFilterJobParallel
+        NoiseMergeJobParallel noiseMergeJobParallel = new NoiseMergeJobParallel
         {
             terrainSize = terrainSize,
-            centerPos = centerPos,
-            maxDistance = math.distance(furtherPos, centerPos),
-            noiseArray = noiseArray,
-            arrayMin = noiseArray.Min(),
-            arrayMax = noiseArray.Max()
-        };
-
-        JobHandle jobHandle = noiseRoundFilterJobParallel.Schedule(arraySize, terrainSize.x);
-        jobHandle.Complete();
-    }
-
-    private void StartNoiseThresholdJob(int arraySize)
-    {
-        NoiseThresholdJobParallel noiseThresholdJobParallel = new NoiseThresholdJobParallel
-        {
-            threshold = threshold,
-            terrainSize = terrainSize,
-            noiseArray = noiseArray,
-            arrayMin = noiseArray.Min(),
-            arrayMax = noiseArray.Max(),
+            index2DHashMap = index2DHashMap,
             positionHashSet = positionHashSet.AsParallelWriter()
         };
 
-        JobHandle jobHandle = noiseThresholdJobParallel.Schedule(arraySize, terrainSize.x);
+        JobHandle jobHandle = noiseMergeJobParallel.Schedule(terrainSize.x * terrainSize.z, terrainSize.x);
         jobHandle.Complete();
     }
 
     private void Generate3DNoise()
     {
         int arraySize = terrainSize.x * terrainSize.y * terrainSize.z;
-        noiseArray = new NativeArray<float>(arraySize, Allocator.TempJob);
-        StartNoiseGeneratorJob(arraySize);
+        NativeMultiHashMap<int, int3> index2DHashMap = new NativeMultiHashMap<int, int3>(arraySize, Allocator.TempJob);
+        NativeHashMap<int3, bool> positionHashSet = new NativeHashMap<int3, bool>(arraySize, Allocator.TempJob); // Size of index2Dhashmap ???
+        
+        StartNoiseGeneratorJob(ref index2DHashMap);
 
-        if (roundFilter)
-        {
-            StartNoiseRoundFilterJob(arraySize);
-        }
-
-        positionHashSet = new NativeMultiHashMap<int3, float>(arraySize, Allocator.TempJob);
-        StartNoiseThresholdJob(arraySize);
+        StartNoiseMergeJob(ref index2DHashMap, ref positionHashSet);
 
         NativeArray<int3> hashSetKeys = positionHashSet.GetKeyArray(Allocator.TempJob);
         tempPositionHashSetArray[0] = new HashSet<int3>(hashSetKeys);
 
-        noiseArray.Dispose();
+        index2DHashMap.Dispose();
         positionHashSet.Dispose();
         hashSetKeys.Dispose();
-    }
-    
-    // private float GetPerlinValue3D(float x, float y, float z)
-    // {
-    //     float xCoord = x / terrainSize.x * noiseScale.x + offset.x;
-    //     float yCoord = y / terrainSize.y * noiseScale.y + offset.y;
-    //     float zCoord = z / terrainSize.z * noiseScale.z + offset.z;
-
-    //     float xy = Mathf.PerlinNoise(xCoord, yCoord);
-    //     float yz = Mathf.PerlinNoise(yCoord, zCoord);
-    //     float xz = Mathf.PerlinNoise(xCoord, zCoord);
-        
-    //     float yx = Mathf.PerlinNoise(yCoord, xCoord);
-    //     float zy = Mathf.PerlinNoise(zCoord, yCoord);
-    //     float zx = Mathf.PerlinNoise(zCoord, xCoord);
-
-    //     float xyz = xy + yz + xz + yx + zy + zx;
-    //     return xyz / 6f;
-    // }
-
-    private float ApplyRound3DNoiseFilter(int3 point, float value)
-    {
-        float distanceFromCenterPoint = math.distance(point, centerPoint);
-        float distanceFromCenterPointNormalized = distanceFromCenterPoint / maxDistanceFromCenterPoint;
-        float attenuationCoef = roundFilterCurve.Evaluate(distanceFromCenterPointNormalized);
-        return value * attenuationCoef;
     }
 
 
