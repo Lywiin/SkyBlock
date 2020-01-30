@@ -228,7 +228,7 @@ public class TerrainGenerator3D : MonoBehaviour
                     int cubePrefabIndex = finalPrefabIndex3DArray[x, y, z] - 1;
 
                     Entity entity = cubeEntitiesArrayArray[cubePrefabIndex][indexes[cubePrefabIndex]];
-                    newPos = new float3(x, y, z) + rootPos;
+                    newPos = new float3(x, y - terrainSize.y, z) + rootPos;
 
                     manager.SetComponentData(entity, new WaveMoveData 
                     { 
