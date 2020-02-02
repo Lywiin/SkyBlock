@@ -5,7 +5,7 @@ using Unity.Transforms;
 using Unity.Mathematics;
 using Unity.Collections;
 
-[BurstCompile]
+[BurstCompile(CompileSynchronously = true)]
 public struct NoiseGeneratorJobParallel : IJobParallelFor
 {
     [ReadOnly] public int3 terrainSize;
@@ -48,7 +48,8 @@ public struct NoiseMergeJobParallel : IJobParallelFor
     [ReadOnly] public int3 terrainSize;
     [ReadOnly] public NativeMultiHashMap<int, int3> index2DHashMap;
 
-    [WriteOnly] public NativeHashMap<int3, bool>.ParallelWriter positionHashSet;
+    [WriteOnly] public NativeHashMap<int3, bool>.ParallelWriter topPositionHashMap;
+    [WriteOnly] public NativeHashMap<int3, bool>.ParallelWriter positionHashMap;
 
     public void Execute(int index)
     {
@@ -62,7 +63,11 @@ public struct NoiseMergeJobParallel : IJobParallelFor
 
                 for (int i = 0; i < index2DHashMap.CountValuesForKey(index); i++)
                 {
-                    positionHashSet.TryAdd(new int3(oldPos.x, y, oldPos.z), true);
+                    if (i == 0) 
+                        topPositionHashMap.TryAdd(new int3(oldPos.x, y, oldPos.z), true);
+                    else 
+                        positionHashMap.TryAdd(new int3(oldPos.x, y, oldPos.z), true);
+
                     y--;
                 }
 

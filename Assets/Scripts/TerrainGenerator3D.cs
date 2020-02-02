@@ -169,7 +169,7 @@ public class TerrainGenerator3D : MonoBehaviour
         jobHandle.Complete();
     }
 
-    private void StartNoiseMergeJob(ref NativeMultiHashMap<int, int3> index2DHashMap, ref NativeHashMap<int3, bool> positionHashSet)
+    private void StartNoiseMergeJob(ref NativeMultiHashMap<int, int3> index2DHashMap, ref NativeHashMap<int3, bool> topPositionHashMap, ref NativeHashMap<int3, bool> positionHashMap)
     {
         float3 centerPos = new float3(terrainSize.x / 2, terrainSize.y - 1, terrainSize.z / 2);
         float3 furtherPos = float3.zero;
@@ -178,7 +178,8 @@ public class TerrainGenerator3D : MonoBehaviour
         {
             terrainSize = terrainSize,
             index2DHashMap = index2DHashMap,
-            positionHashSet = positionHashSet.AsParallelWriter()
+            positionHashMap = positionHashMap.AsParallelWriter(),
+            topPositionHashMap = topPositionHashMap.AsParallelWriter()
         };
 
         JobHandle jobHandle = noiseMergeJobParallel.Schedule(terrainSize.x * terrainSize.z, terrainSize.x);
@@ -189,17 +190,28 @@ public class TerrainGenerator3D : MonoBehaviour
     {
         int arraySize = terrainSize.x * terrainSize.y * terrainSize.z;
         NativeMultiHashMap<int, int3> index2DHashMap = new NativeMultiHashMap<int, int3>(arraySize, Allocator.TempJob);
-        NativeHashMap<int3, bool> positionHashSet = new NativeHashMap<int3, bool>(arraySize, Allocator.TempJob); // Size of index2Dhashmap ???
+        NativeHashMap<int3, bool> topPositionHashMap = new NativeHashMap<int3, bool>(terrainSize.x * terrainSize.z, Allocator.TempJob); // Size of index2Dhashmap ???
+        NativeHashMap<int3, bool> positionHashMap = new NativeHashMap<int3, bool>(arraySize, Allocator.TempJob); // Size of index2Dhashmap ???
         
         StartNoiseGeneratorJob(ref index2DHashMap);
 
-        StartNoiseMergeJob(ref index2DHashMap, ref positionHashSet);
+        StartNoiseMergeJob(ref index2DHashMap, ref topPositionHashMap, ref positionHashMap);
 
-        NativeArray<int3> hashSetKeys = positionHashSet.GetKeyArray(Allocator.TempJob);
+        NativeArray<int3> topHashSetKeys = topPositionHashMap.GetKeyArray(Allocator.TempJob);
+        NativeArray<int3> hashSetKeys = positionHashMap.GetKeyArray(Allocator.TempJob);
+
+        HashSet<int3> topPositionHashSet = new HashSet<int3>(topHashSetKeys);
         tempPositionHashSetArray[0] = new HashSet<int3>(hashSetKeys);
 
+        topPositionHashSet = new HashSet<int3>(topPositionHashSet.Shuffle());
+        tempPositionHashSetArray[0] = new HashSet<int3>(tempPositionHashSetArray[0].Shuffle());
+        topPositionHashSet.UnionWith(tempPositionHashSetArray[0]);
+        tempPositionHashSetArray[0] = topPositionHashSet;
+
         index2DHashMap.Dispose();
-        positionHashSet.Dispose();
+        topPositionHashMap.Dispose();
+        positionHashMap.Dispose();
+        topHashSetKeys.Dispose();
         hashSetKeys.Dispose();
     }
 
@@ -253,7 +265,7 @@ public class TerrainGenerator3D : MonoBehaviour
         int currentCubePrefabIndex = cubePrefabArray.Length - 1;
 
         // Utils.StartTimer();
-        tempPositionHashSetArray[0] = new HashSet<int3>(tempPositionHashSetArray[0].Shuffle());
+        // tempPositionHashSetArray[0] = new HashSet<int3>(tempPositionHashSetArray[0].Shuffle());
         for (int i = 1; i < tempPositionHashSetArray.Length; i++)
                 tempPositionHashSetArray[i] = new HashSet<int3>(tempPositionHashSetArray[0]);
         // Utils.EndTimer("Shuffle1", "lime");
