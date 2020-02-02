@@ -6,6 +6,30 @@ using Unity.Mathematics;
 using Unity.Collections;
 
 [BurstCompile(CompileSynchronously = true)]
+public struct NoiseGenerator2DJobParallel : IJobParallelFor
+{
+    [ReadOnly] public int2 terrainSize;
+    [ReadOnly] public float2 terrainScale;
+    [ReadOnly] public float2 terrainOffset;
+
+    [WriteOnly] public NativeHashMap<int, float>.ParallelWriter noiseValue2DHashMap;
+
+    public void Execute(int index)
+    {
+        float x = index / terrainSize.y;
+        float y = index % terrainSize.y;
+
+        float2 currentPos = new float2(x, y);
+        float2 scaledPos = currentPos / terrainSize * terrainScale + terrainOffset;
+
+        float noiseValue = noise.cnoise(scaledPos);
+        noiseValue = math.unlerp(-1,1, noiseValue);
+
+        noiseValue2DHashMap.TryAdd(index, noiseValue);
+    }
+}
+
+[BurstCompile(CompileSynchronously = true)]
 public struct NoiseGeneratorJobParallel : IJobParallelFor
 {
     [ReadOnly] public int3 terrainSize;

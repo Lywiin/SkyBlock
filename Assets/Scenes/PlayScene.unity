@@ -381,6 +381,10 @@ MonoBehaviour:
     x: 1
     y: 1
     z: 1
+  noiseScale2D:
+    x: 1
+    y: 10
+    z: 1
   waveHeight: 2
   waveSpeed: 1
   fillNone: 1

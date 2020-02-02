@@ -16,6 +16,8 @@ public class TerrainGenerator3D : MonoBehaviour
     [Header("Parameters")]
     public int3 terrainSize;
     public float3 noiseScale;
+    public float3 noiseScale2D;
+    public int terrasseHeight = 1;
     public float waveHeight;
     public float waveSpeed;
     public bool fillNone;
@@ -218,8 +220,25 @@ public class TerrainGenerator3D : MonoBehaviour
 
     /************************ INSTANTIATE ************************/
 
+    private void StartNoiseGenerator2DJob(ref NativeHashMap<int, float> noiseValue2DHashMap)
+    {
+        NoiseGenerator2DJobParallel noiseGenerator2DJobParallel = new NoiseGenerator2DJobParallel
+        {
+            terrainSize = new int2(terrainSize.x, terrainSize.z),
+            terrainScale = new float2(noiseScale2D.x, noiseScale2D.z),
+            terrainOffset = new float2(offset.x, offset.z),
+            noiseValue2DHashMap = noiseValue2DHashMap.AsParallelWriter(),
+        };
+
+        JobHandle jobHandle = noiseGenerator2DJobParallel.Schedule(terrainSize.x * terrainSize.z, terrainSize.x);
+        jobHandle.Complete();
+    }
+
     private void InstantiateCubes3D()
     {
+        NativeHashMap<int, float> noiseValue2DHashMap = new NativeHashMap<int, float>(terrainSize.x * terrainSize.z, Allocator.TempJob);
+        StartNoiseGenerator2DJob(ref noiseValue2DHashMap);
+
         float3 newPos = float3.zero;
         float3 rootPos = (float3)transform.position;
         int[] indexes = new int[cubePrefabArray.Length];
@@ -240,7 +259,9 @@ public class TerrainGenerator3D : MonoBehaviour
                     int cubePrefabIndex = finalPrefabIndex3DArray[x, y, z] - 1;
 
                     Entity entity = cubeEntitiesArrayArray[cubePrefabIndex][indexes[cubePrefabIndex]];
-                    newPos = new float3(x, y - terrainSize.y, z) + rootPos;
+                    float yPos = y - terrainSize.y; // Set top of the island to y = 0
+                    yPos += (int)(noiseValue2DHashMap[x * z] * noiseScale2D.y) / terrasseHeight * terrasseHeight; // Modulate height of island surface
+                    newPos = new float3(x, yPos, z) + rootPos;
 
                     manager.SetComponentData(entity, new WaveMoveData 
                     { 
@@ -255,6 +276,8 @@ public class TerrainGenerator3D : MonoBehaviour
         {
             cubeEntitiesArrayArray[i].Dispose();
         }
+
+        noiseValue2DHashMap.Dispose();
     }
 
 

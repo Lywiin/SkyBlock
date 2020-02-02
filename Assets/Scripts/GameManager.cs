@@ -78,6 +78,6 @@ public class GameManager : MonoBehaviour
     public void InitSeed()
     {
         rng = new Unity.Mathematics.Random(seed);
-        UnityEngine.Random.InitState(System.Convert.ToInt32(seed));
+        UnityEngine.Random.InitState(unchecked((int)seed));
     }
 }
